@@ -29,6 +29,7 @@ function ControlButton({
     <button
       type="button"
       title={title}
+      aria-label={title}
       onClick={onClick}
       disabled={disabled}
       className={`control-btn ${primary ? 'control-btn-primary' : ''}`}
@@ -39,14 +40,15 @@ function ControlButton({
 }
 
 export function PuzzleControls({ finished, canHint, hintLevel, canReveal, onHint, onReveal, onReset, onNext }: PuzzleControlsProps) {
-  const hintTitle = hintLevel === 0 ? 'Highlight the piece to move' : hintLevel === 1 ? 'Show the move' : 'Hint shown';
+  const hintTitle =
+    hintLevel === 0 ? 'Highlight the piece to move. A hint counts as a miss.' : hintLevel === 1 ? 'Show the move' : 'Hint shown';
   return (
     <div className="controls grid grid-cols-4 gap-1">
       <ControlButton title={hintTitle} onClick={onHint} disabled={!canHint || finished}>
         <Lightbulb size={14} />
         <span className="control-label">Hint</span>
       </ControlButton>
-      <ControlButton title="Play the solution. This attempt won't count." onClick={onReveal} disabled={!canReveal}>
+      <ControlButton title="Play the solution. Counts as a miss, with no XP." onClick={onReveal} disabled={!canReveal}>
         <Eye size={14} />
         <span className="control-label">Reveal</span>
       </ControlButton>

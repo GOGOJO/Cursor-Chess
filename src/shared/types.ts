@@ -1,3 +1,5 @@
+import type { DifficultyBand } from './difficulty';
+
 /**
  * A puzzle in Lichess database format. `fen` is the position *before* the
  * opponent's setup move; `moves[0]` is that setup move and the player's
@@ -12,6 +14,17 @@ export interface Puzzle {
   gameUrl?: string;
 }
 
-export interface PlayerSummary {
-  solvedCount: number;
+/** `'any'` leaves that dimension unfiltered. `theme` is a Lichess theme id such as `fork`. */
+export interface PuzzleFilters {
+  difficulty: DifficultyBand | 'any';
+  theme: string;
+}
+
+export const DEFAULT_FILTERS: PuzzleFilters = { difficulty: 'any', theme: 'any' };
+
+export interface LibraryInfo {
+  filters: PuzzleFilters;
+  totalCount: number;
+  importedCount: number;
+  matchingCount: number;
 }

@@ -1,22 +1,30 @@
 import * as vscode from 'vscode';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '../shared/messages';
-import type { Puzzle } from '../shared/types';
-import { LocalPuzzleProvider } from './providers/localPuzzleProvider';
-import { StorageService } from './storage/storageService';
+import { chooseNextPuzzle } from '../shared/puzzleLibrary';
+import type { LibraryInfo, Puzzle } from '../shared/types';
+import type { LocalPuzzleProvider } from './providers/localPuzzleProvider';
+import { sanitizeAttempt, type StorageService } from './storage/storageService';
 
 export class PuzzleViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = 'cursorChess.puzzleView';
 
   private view?: vscode.WebviewView;
-  private currentPuzzle: Puzzle;
+  private current?: { puzzle: Puzzle; notice?: string };
+  private pendingProgress = false;
+  private agent?: {
+    setPuzzleBusy: (busy: boolean) => void;
+    setViewVisible: (visible: boolean) => void;
+    hookInstalled: () => boolean;
+    working: () => boolean;
+    enable: () => void;
+  };
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly puzzles: LocalPuzzleProvider,
     private readonly storage: StorageService,
-  ) {
-    this.currentPuzzle = puzzles.first();
-  }
+    private readonly onImportRequested: () => void = () => {},
+  ) {}
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
@@ -27,34 +35,125 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
     };
     view.webview.html = this.renderHtml(view.webview, webviewRoot);
     view.webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => this.handleMessage(message));
+    view.onDidChangeVisibility(() => this.agent?.setViewVisible(view.visible));
     view.onDidDispose(() => {
       this.view = undefined;
+      this.agent?.setViewVisible(false);
     });
+    this.agent?.setViewVisible(view.visible);
   }
 
-  showNextPuzzle(): void {
-    this.currentPuzzle = this.puzzles.next(this.currentPuzzle.id);
-    this.post({ type: 'loadPuzzle', puzzle: this.currentPuzzle });
+  bindAgent(agent: NonNullable<PuzzleViewProvider['agent']>): void {
+    this.agent = agent;
+    this.agent.setViewVisible(this.view?.visible ?? false);
+  }
+
+  postAgent(state: { working: boolean; hookInstalled: boolean }): void {
+    this.post({ type: 'agent', ...state });
+  }
+
+  postSettings(): void {
+    this.post({ type: 'settings', settings: this.storage.getSettings() });
+  }
+
+  showProgress(): void {
+    if (!this.view) {
+      this.pendingProgress = true;
+      return;
+    }
+    this.post({ type: 'showView', view: 'progress' });
+  }
+
+  async showNextPuzzle(): Promise<void> {
+    await this.storage.clearActiveAttempt();
+    this.current = chooseNextPuzzle(this.puzzles, this.storage.getFilters(), this.storage.getRecentPuzzleIds());
+    await this.storage.recordPuzzleShown(this.current.puzzle.id);
+    this.postCurrent();
+  }
+
+  /** Re-sends library counts, for example after an import. */
+  refreshLibrary(): void {
+    this.post({ type: 'library', library: this.libraryInfo() });
+  }
+
+  /**
+   * Picks up where the player left off: the puzzle on screen if the view was only
+   * hidden, or an unfinished attempt saved before the editor closed.
+   */
+  private async showCurrentOrResume(): Promise<void> {
+    if (this.current && this.puzzles.has(this.current.puzzle.id)) {
+      this.postCurrent();
+      return;
+    }
+    const saved = this.storage.getActiveAttempt();
+    const puzzle = saved && !saved.solved && !saved.revealed ? this.puzzles.get(saved.puzzleId) : undefined;
+    if (puzzle) {
+      this.current = { puzzle };
+      this.postCurrent();
+      return;
+    }
+    await this.showNextPuzzle();
   }
 
   private async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     switch (message.type) {
       case 'ready':
-        this.post({ type: 'loadPuzzle', puzzle: this.currentPuzzle });
-        this.post({ type: 'summary', summary: this.storage.getSummary() });
-        break;
-      case 'requestNextPuzzle':
-        this.showNextPuzzle();
-        break;
-      case 'puzzleSolved':
-        if (await this.storage.recordSolve(message.attemptId)) {
-          this.post({ type: 'summary', summary: this.storage.getSummary() });
+        this.refreshLibrary();
+        this.postSettings();
+        this.post({ type: 'progress', progress: this.storage.getSnapshot() });
+        this.postAgent({ working: this.agent?.working() ?? false, hookInstalled: this.agent?.hookInstalled() ?? false });
+        await this.showCurrentOrResume();
+        if (this.pendingProgress) {
+          this.pendingProgress = false;
+          this.showProgress();
         }
         break;
-      case 'puzzleFailed':
-        await this.storage.recordFailure(message.attemptId);
+      case 'requestNextPuzzle':
+        await this.showNextPuzzle();
+        break;
+      case 'attempt': {
+        const attempt = sanitizeAttempt(message.attempt);
+        if (!attempt || attempt.puzzleId !== this.current?.puzzle.id) break;
+        if (await this.storage.recordAttempt(attempt, this.current.puzzle)) {
+          this.post({ type: 'progress', progress: this.storage.getSnapshot() });
+        }
+        break;
+      }
+      case 'setSettings':
+        this.post({ type: 'settings', settings: await this.storage.setSettings(message.settings) });
+        break;
+      case 'setFilters':
+        await this.storage.setFilters(message.filters);
+        this.refreshLibrary();
+        await this.showNextPuzzle();
+        break;
+      case 'importPuzzles':
+        this.onImportRequested();
+        break;
+      case 'puzzleBusy':
+        this.agent?.setPuzzleBusy(message.busy === true);
+        break;
+      case 'installAgentHook':
+        void this.agent?.enable();
         break;
     }
+  }
+
+  private libraryInfo(): LibraryInfo {
+    const filters = this.storage.getFilters();
+    return {
+      filters,
+      totalCount: this.puzzles.count(),
+      importedCount: this.puzzles.importedCount,
+      matchingCount: this.puzzles.count(filters),
+    };
+  }
+
+  private postCurrent(): void {
+    if (!this.current) return;
+    const saved = this.storage.getActiveAttempt();
+    const resume = saved?.puzzleId === this.current.puzzle.id ? saved : undefined;
+    this.post({ type: 'loadPuzzle', puzzle: this.current.puzzle, notice: this.current.notice, resume });
   }
 
   private post(message: ExtensionToWebviewMessage): void {

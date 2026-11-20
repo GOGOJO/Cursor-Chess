@@ -29,7 +29,6 @@ const TARGETS = {
   sacrifice: 12,
   trappedPiece: 12,
   attraction: 12,
-  stalemate: 10,
 };
 
 const THEME_ORDER = Object.keys(TARGETS);

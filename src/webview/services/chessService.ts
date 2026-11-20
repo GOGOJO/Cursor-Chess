@@ -239,6 +239,36 @@ export class PuzzleSession {
     return san;
   }
 
+  /**
+   * Rebuilds an attempt from the player's accepted moves, for resuming after a
+   * restart. Opponent replies are replayed too. Returns false and leaves a fresh
+   * start if any move no longer fits the puzzle.
+   */
+  restore(playerMoves: readonly string[], mistakes: number, revealed: boolean): boolean {
+    this.reset();
+    for (const uci of playerMoves) {
+      let result: MoveResult;
+      try {
+        const { from, to, promotion } = parseUci(uci);
+        result = this.submitMove(from, to, promotion);
+      } catch {
+        result = { kind: 'illegal' };
+      }
+      if (result.kind !== 'correct' && result.kind !== 'solved') {
+        this.reset();
+        return false;
+      }
+      this.playOpponentReply();
+    }
+    this._mistakes = Math.max(0, Math.floor(mistakes));
+    if (revealed && this.startReveal()) {
+      while (this.playRevealPly()) {
+        // Play the rest of the line instantly.
+      }
+    }
+    return true;
+  }
+
   private applyUci(uci: string): string {
     const { from, to, promotion } = parseUci(uci);
     const move = this.chess.move({ from, to, promotion });
