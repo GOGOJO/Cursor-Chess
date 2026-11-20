@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import * as vscode from 'vscode';
 import type { PuzzleViewProvider } from '../puzzleViewProvider';
 import type { StorageService } from '../storage/storageService';
-import { AgentActivity } from './agentActivity';
+import { AgentActivity, followBoard, idleBoardFollow, type BoardFollowState } from './agentActivity';
 import { startEventTail } from './eventTail';
 import { hookAlreadyInstalled, hookPaths, installHookFiles, readHookConfig } from './hookConfig';
 
@@ -28,15 +28,46 @@ export function startAgentNotices(storage: StorageService, provider: PuzzleViewP
     provider.postAgent({ working: agentStatus === 'working', hookInstalled: hookAlreadyInstalled(readHookConfig(home)) });
   };
 
+  let follow: BoardFollowState = idleBoardFollow();
+  let syncBoard = () => {};
+
   const activity = new AgentActivity({
     notificationsEnabled: () => storage.getSettings().notifyOnAgent,
-    onStatus: publish,
+    onStatus: (agentStatus) => {
+      publish(agentStatus);
+      syncBoard();
+    },
     onNotice: () => {
       void vscode.window.showInformationMessage('Agent finished.', 'Open puzzle').then((choice) => {
         if (choice) void vscode.commands.executeCommand('cursorChess.open');
       });
     },
   });
+
+  syncBoard = () => {
+    const decision = followBoard({
+      ...follow,
+      enabled: storage.getSettings().openWithAgent,
+      working: activity.working,
+      viewVisible: provider.isViewVisible(),
+    });
+    const { action, ...next } = decision;
+    follow = next;
+    if (action === 'reveal') {
+      void Promise.resolve(vscode.commands.executeCommand('cursorChess.open')).then(
+        () => {
+          follow = { ...follow, opening: false };
+          syncBoard();
+        },
+        () => {
+          follow = { ...follow, opening: false };
+          syncBoard();
+        },
+      );
+    } else if (action === 'hide') {
+      void vscode.commands.executeCommand('workbench.action.closeSidebar');
+    }
+  };
 
   const stopTail = startEventTail(paths.events, (event) => activity.ingest(event));
 
@@ -73,6 +104,7 @@ export function startAgentNotices(storage: StorageService, provider: PuzzleViewP
     hookInstalled: () => hookAlreadyInstalled(readHookConfig(home)),
     working: () => activity.working,
     enable,
+    onSettingsChanged: () => syncBoard(),
   });
 
   return vscode.Disposable.from(

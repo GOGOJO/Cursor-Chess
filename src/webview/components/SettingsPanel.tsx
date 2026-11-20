@@ -102,6 +102,12 @@ export function SettingsPanel({ settings, hookInstalled, onChange, onInstallHook
           checked={settings.notifyOnAgent}
           onChange={(notifyOnAgent) => onChange({ notifyOnAgent })}
         />
+        <Switch
+          label="Open with the agent"
+          hint="Shows the board when an agent starts and closes it when the agent finishes. A board you already had open stays open."
+          checked={settings.openWithAgent}
+          onChange={(openWithAgent) => onChange({ openWithAgent })}
+        />
         {!hookInstalled && (
           <button type="button" className="link-btn self-start text-[11px]" onClick={onInstallHook}>
             Set up the agent hook

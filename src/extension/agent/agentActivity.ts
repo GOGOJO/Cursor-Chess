@@ -98,6 +98,83 @@ export function gateNotice(gate: NoticeGate): { show: boolean; pending: boolean 
   return { show: true, pending: false };
 }
 
+export interface BoardFollowState {
+  enabled: boolean;
+  /** An agent, subagent, or the manual working mark is in progress. */
+  working: boolean;
+  /** The puzzle sidebar is on screen. */
+  viewVisible: boolean;
+  /** This stretch of work has been seen already. */
+  latched: boolean;
+  /** The board was already open when the agent started. */
+  alreadyOpen: boolean;
+  /** The board was opened for this agent. */
+  openedByUs: boolean;
+  /** The editor has been asked to show the board, and has not answered yet. */
+  opening: boolean;
+  /** The board we opened has actually appeared. */
+  seenOpen: boolean;
+  /** The player closed the board we opened, so it stays closed until the next agent. */
+  dismissed: boolean;
+}
+
+export const idleBoardFollow = (): BoardFollowState => ({
+  enabled: false,
+  working: false,
+  viewVisible: false,
+  latched: false,
+  alreadyOpen: false,
+  openedByUs: false,
+  opening: false,
+  seenOpen: false,
+  dismissed: false,
+});
+
+/**
+ * Decides whether the puzzle sidebar should appear or hide as an agent starts
+ * and stops. A board the player already had open is left alone. Closing the
+ * board we opened dismisses it for the rest of that stretch of work.
+ */
+export function followBoard(state: BoardFollowState): BoardFollowState & { action: 'reveal' | 'hide' | 'none' } {
+  const reset = { ...idleBoardFollow(), enabled: state.enabled, working: state.working, viewVisible: state.viewVisible, action: 'none' as const };
+  if (!state.enabled) return reset;
+
+  if (!state.working) {
+    if (state.openedByUs && state.viewVisible && !state.dismissed) return { ...reset, action: 'hide' };
+    return reset;
+  }
+
+  const latched = state.latched;
+  const alreadyOpen = latched ? state.alreadyOpen : state.viewVisible;
+  const openedByUs = latched ? state.openedByUs : false;
+  const opening = latched ? state.opening : false;
+  const seenOpen = latched ? state.seenOpen || state.viewVisible : false;
+  const dismissed = latched ? state.dismissed : false;
+  const next = {
+    enabled: true,
+    working: true,
+    viewVisible: state.viewVisible,
+    latched: true,
+    alreadyOpen,
+    openedByUs,
+    opening,
+    seenOpen,
+    dismissed,
+  };
+
+  if (alreadyOpen || dismissed) return { ...next, action: 'none' };
+
+  if (state.viewVisible) return { ...next, opening: false, seenOpen: openedByUs || seenOpen, action: 'none' };
+
+  // Hidden again after it was shown: the player closed it. Hidden before the first
+  // show is just the editor catching up, including when focus returns before the view does.
+  if (openedByUs && !opening && seenOpen) return { ...next, dismissed: true, action: 'none' };
+
+  if (opening || openedByUs) return { ...next, action: 'none' };
+
+  return { ...next, openedByUs: true, opening: true, action: 'reveal' };
+}
+
 const NOTICE_GAP_MS = 4000;
 
 export class AgentActivity {

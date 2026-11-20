@@ -4,7 +4,7 @@ Bite-sized tactical chess puzzles in your Cursor (or VS Code) sidebar, for the m
 
 ## Status
 
-Phase 6 (agent notices) of 7. You get:
+The sidebar follows your agent. You get:
 
 - An activity-bar icon and a **Puzzle** sidebar view.
 - An interactive board (react-chessboard, with chess.js as the source of truth). It supports drag-and-drop and click-to-move, shows legal-move dots and capture rings, highlights the last move, glows the king when in check, and blocks illegal moves.
@@ -26,11 +26,12 @@ Phase 6 (agent notices) of 7. You get:
 - Everything is stored in `globalState`, and the solved count from earlier versions carries over.
 - **Settings**, from the gear in the header. Board colors (Sage, Walnut, Slate, Contrast), standard or letter pieces, sound, move animation, coordinates, and automatic next puzzle after a solve. Sound and the rest are remembered.
 - **Agent notices.** Run **Cursor Chess: Enable Agent Notices…** once. It adds a small hook in `~/.cursor` that records when an agent starts and finishes, not your prompts. A gold dot and a status-bar item show while an agent is working. When it finishes, a quiet notice appears. If a puzzle is on screen, the notice waits, and the status bar stays on "Agent finished" until the puzzle is done.
+- **Open with the agent.** On by default. The puzzle sidebar opens when an agent starts and closes when that agent finishes. A board you already had open stays open, and closing the board yourself keeps it closed until the next agent. Turn it off in Settings.
 - **Cursor Chess: Agent Finished** and **Mark Agent Working** do the same thing by hand, which is the fallback when a hook can't see the agent (cloud agents included). **Toggle Notifications** turns the notice off. **Show Statistics** opens the Progress view.
 - A short glow around the board on a solve. Animations turn off when the system asks for reduced motion.
 - Controls keep a name for screen readers when the sidebar is too narrow for labels, and the layout holds together down to about 280px wide.
 
-The only network access is an import you start yourself. See the implementation plan for the roadmap: distribution.
+The only network access is an import you start yourself.
 
 ## Install the VSIX
 
@@ -39,7 +40,7 @@ npm install
 npm run package          # typecheck + tests + build + cursor-chess-<version>.vsix
 ```
 
-Then in Cursor, open the Command Palette and run **Extensions: Install from VSIX…**, and pick the `.vsix` file. You can also run `cursor --install-extension cursor-chess-0.6.0.vsix`. Click the knight icon in the activity bar to open it.
+Then in Cursor, open the Command Palette and run **Extensions: Install from VSIX…**, and pick the `.vsix` file. You can also run `cursor --install-extension cursor-chess-0.7.0.vsix`. Click the knight icon in the activity bar to open it.
 
 ## Develop
 
