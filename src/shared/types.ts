@@ -14,10 +14,6 @@ export interface Puzzle {
   gameUrl?: string;
 }
 
-export interface PlayerSummary {
-  solvedCount: number;
-}
-
 /** `'any'` leaves that dimension unfiltered. `theme` is a Lichess theme id such as `fork`. */
 export interface PuzzleFilters {
   difficulty: DifficultyBand | 'any';

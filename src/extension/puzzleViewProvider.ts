@@ -3,7 +3,7 @@ import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '../sh
 import { chooseNextPuzzle } from '../shared/puzzleLibrary';
 import type { LibraryInfo, Puzzle } from '../shared/types';
 import type { LocalPuzzleProvider } from './providers/localPuzzleProvider';
-import type { StorageService } from './storage/storageService';
+import { sanitizeAttempt, type StorageService } from './storage/storageService';
 
 export class PuzzleViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = 'cursorChess.puzzleView';
@@ -33,6 +33,7 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
   }
 
   async showNextPuzzle(): Promise<void> {
+    await this.storage.clearActiveAttempt();
     this.current = chooseNextPuzzle(this.puzzles, this.storage.getFilters(), this.storage.getRecentPuzzleIds());
     await this.storage.recordPuzzleShown(this.current.puzzle.id);
     this.postCurrent();
@@ -43,25 +44,43 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
     this.post({ type: 'library', library: this.libraryInfo() });
   }
 
+  /**
+   * Picks up where the player left off: the puzzle on screen if the view was only
+   * hidden, or an unfinished attempt saved before the editor closed.
+   */
+  private async showCurrentOrResume(): Promise<void> {
+    if (this.current && this.puzzles.has(this.current.puzzle.id)) {
+      this.postCurrent();
+      return;
+    }
+    const saved = this.storage.getActiveAttempt();
+    const puzzle = saved && !saved.solved && !saved.revealed ? this.puzzles.get(saved.puzzleId) : undefined;
+    if (puzzle) {
+      this.current = { puzzle };
+      this.postCurrent();
+      return;
+    }
+    await this.showNextPuzzle();
+  }
+
   private async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     switch (message.type) {
       case 'ready':
         this.refreshLibrary();
-        this.post({ type: 'summary', summary: this.storage.getSummary() });
-        if (this.current && this.puzzles.has(this.current.puzzle.id)) this.postCurrent();
-        else await this.showNextPuzzle();
+        this.post({ type: 'progress', progress: this.storage.getSnapshot() });
+        await this.showCurrentOrResume();
         break;
       case 'requestNextPuzzle':
         await this.showNextPuzzle();
         break;
-      case 'puzzleSolved':
-        if (await this.storage.recordSolve(message.attemptId)) {
-          this.post({ type: 'summary', summary: this.storage.getSummary() });
+      case 'attempt': {
+        const attempt = sanitizeAttempt(message.attempt);
+        if (!attempt || attempt.puzzleId !== this.current?.puzzle.id) break;
+        if (await this.storage.recordAttempt(attempt, this.current.puzzle)) {
+          this.post({ type: 'progress', progress: this.storage.getSnapshot() });
         }
         break;
-      case 'puzzleFailed':
-        await this.storage.recordFailure(message.attemptId);
-        break;
+      }
       case 'setFilters':
         await this.storage.setFilters(message.filters);
         this.refreshLibrary();
@@ -85,7 +104,9 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
 
   private postCurrent(): void {
     if (!this.current) return;
-    this.post({ type: 'loadPuzzle', puzzle: this.current.puzzle, notice: this.current.notice });
+    const saved = this.storage.getActiveAttempt();
+    const resume = saved?.puzzleId === this.current.puzzle.id ? saved : undefined;
+    this.post({ type: 'loadPuzzle', puzzle: this.current.puzzle, notice: this.current.notice, resume });
   }
 
   private post(message: ExtensionToWebviewMessage): void {

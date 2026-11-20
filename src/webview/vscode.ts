@@ -1,7 +1,8 @@
+import { sanitizeAttempt, StorageService, type KeyValueStore } from '../extension/storage/storageService';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '../shared/messages';
 import { chooseNextPuzzle, PuzzleLibrary } from '../shared/puzzleLibrary';
 import { SAMPLE_PUZZLES } from '../shared/samplePuzzles';
-import { DEFAULT_FILTERS, type PuzzleFilters } from '../shared/types';
+import type { Puzzle } from '../shared/types';
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -18,47 +19,84 @@ window.addEventListener('message', (event: MessageEvent<ExtensionToWebviewMessag
   for (const listener of listeners) listener(event.data);
 });
 
+/** Keeps the browser preview's progress across reloads, like `globalState` does in the editor. */
+function localStore(): KeyValueStore {
+  return {
+    get<T>(key: string, defaultValue: T): T {
+      const raw = window.localStorage.getItem(key);
+      if (raw === null) return defaultValue;
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
+        return defaultValue;
+      }
+    },
+    update(key, value) {
+      if (value === undefined) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, JSON.stringify(value));
+      return Promise.resolve();
+    },
+  };
+}
+
 /** Stands in for the extension host when the UI runs in a plain browser (`npm run dev:webview`). */
 function createBrowserFallback(): VsCodeApi {
   const library = new PuzzleLibrary(SAMPLE_PUZZLES);
-  let filters: PuzzleFilters = { ...DEFAULT_FILTERS };
-  const recent: string[] = [];
-  let solvedCount = 0;
+  const storage = new StorageService(localStore());
+  let current: { puzzle: Puzzle; notice?: string } | undefined;
   const reply = (message: ExtensionToWebviewMessage) => setTimeout(() => window.postMessage(message, '*'), 0);
 
-  const sendLibrary = () =>
+  const sendLibrary = () => {
+    const filters = storage.getFilters();
     reply({
       type: 'library',
       library: { filters, totalCount: library.totalCount, importedCount: 0, matchingCount: library.matching(filters).length },
     });
-  const sendNext = () => {
-    const next = chooseNextPuzzle(library, filters, recent);
-    recent.push(next.puzzle.id);
-    reply({ type: 'loadPuzzle', ...next });
+  };
+  const sendCurrent = () => {
+    if (!current) return;
+    const saved = storage.getActiveAttempt();
+    reply({ type: 'loadPuzzle', ...current, resume: saved?.puzzleId === current.puzzle.id ? saved : undefined });
+  };
+  const sendNext = async () => {
+    await storage.clearActiveAttempt();
+    current = chooseNextPuzzle(library, storage.getFilters(), storage.getRecentPuzzleIds());
+    await storage.recordPuzzleShown(current.puzzle.id);
+    sendCurrent();
   };
 
   return {
-    postMessage(raw) {
+    async postMessage(raw) {
       const message = raw as WebviewToExtensionMessage;
       switch (message.type) {
-        case 'ready':
+        case 'ready': {
           sendLibrary();
-          reply({ type: 'summary', summary: { solvedCount } });
-          sendNext();
+          reply({ type: 'progress', progress: storage.getSnapshot() });
+          const saved = storage.getActiveAttempt();
+          const puzzle = saved && !saved.solved && !saved.revealed ? library.get(saved.puzzleId) : undefined;
+          if (puzzle) {
+            current = { puzzle };
+            sendCurrent();
+          } else {
+            await sendNext();
+          }
           break;
+        }
         case 'requestNextPuzzle':
-          sendNext();
+          await sendNext();
           break;
-        case 'puzzleSolved':
-          solvedCount += 1;
-          reply({ type: 'summary', summary: { solvedCount } });
+        case 'attempt': {
+          const attempt = sanitizeAttempt(message.attempt);
+          if (!attempt || !current || attempt.puzzleId !== current.puzzle.id) break;
+          if (await storage.recordAttempt(attempt, current.puzzle)) {
+            reply({ type: 'progress', progress: storage.getSnapshot() });
+          }
           break;
-        case 'puzzleFailed':
-          break;
+        }
         case 'setFilters':
-          filters = message.filters;
+          await storage.setFilters(message.filters);
           sendLibrary();
-          sendNext();
+          await sendNext();
           break;
         case 'importPuzzles':
           console.info('Importing needs the extension host. Run the extension with F5 to try it.');

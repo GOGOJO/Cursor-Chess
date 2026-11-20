@@ -43,6 +43,10 @@ export class LocalPuzzleProvider implements PuzzleProvider {
     return this.library.has(id);
   }
 
+  get(id: string): Puzzle | undefined {
+    return this.library.get(id);
+  }
+
   /** Every id in the library, so an import can skip puzzles it already has. */
   knownIds(): Set<string> {
     return new Set([...this.sample.map((p) => p.id), ...this.imported.map((p) => p.id)]);

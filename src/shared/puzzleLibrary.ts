@@ -68,6 +68,10 @@ export class PuzzleLibrary {
     return this.pool.some((p) => p.id === id);
   }
 
+  get(id: string): Puzzle | undefined {
+    return this.pool.find((p) => p.id === id);
+  }
+
   matching(filters: PuzzleFilters): Puzzle[] {
     return this.pool.filter((p) => matchesFilters(p, filters));
   }

@@ -185,6 +185,84 @@ a {
   color: var(--color-ink);
 }
 
+.rating-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rating-chip:hover {
+  background: var(--color-surface-raised);
+}
+
+.rating-chip[aria-pressed='true'] {
+  border-color: var(--color-gold);
+}
+
+.rating-chip:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.stat-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-surface);
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.rating-chart {
+  width: 100%;
+  height: 64px;
+  overflow: visible;
+}
+
+.rating-chart-line {
+  fill: none;
+  stroke: var(--color-gold);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.rating-chart-fill {
+  fill: color-mix(in srgb, var(--color-gold) 12%, transparent);
+}
+
+.theme-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-surface-raised);
+  overflow: hidden;
+}
+
+.theme-bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+
 @container (max-width: 340px) {
   .control-label {
     position: absolute;
