@@ -19,14 +19,26 @@ export class StorageService {
 
   /**
    * Records a solve once per attempt id. Returns false when the attempt was already
-   * recorded, so a re-sent message can never double-count.
+   * recorded (including a reveal), so a re-sent message can never double-count.
    */
   async recordSolve(attemptId: string): Promise<boolean> {
+    if (!(await this.remember(attemptId))) return false;
+    await this.store.update(SOLVED_COUNT_KEY, this.getSummary().solvedCount + 1);
+    return true;
+  }
+
+  /**
+   * Marks an attempt spent because the solution was revealed. A later solve of the
+   * same attempt does not count.
+   */
+  async recordFailure(attemptId: string): Promise<boolean> {
+    return this.remember(attemptId);
+  }
+
+  private async remember(attemptId: string): Promise<boolean> {
     const recent = this.store.get<string[]>(RECENT_ATTEMPTS_KEY, []);
     if (recent.includes(attemptId)) return false;
-    const nextRecent = [...recent, attemptId].slice(-MAX_RECENT_ATTEMPTS);
-    await this.store.update(RECENT_ATTEMPTS_KEY, nextRecent);
-    await this.store.update(SOLVED_COUNT_KEY, this.getSummary().solvedCount + 1);
+    await this.store.update(RECENT_ATTEMPTS_KEY, [...recent, attemptId].slice(-MAX_RECENT_ATTEMPTS));
     return true;
   }
 }

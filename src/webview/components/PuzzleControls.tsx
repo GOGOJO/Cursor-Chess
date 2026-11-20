@@ -1,10 +1,13 @@
-import { ChevronRight, Lightbulb, RotateCcw } from 'lucide-react';
+import { ChevronRight, Eye, Lightbulb, RotateCcw } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface PuzzleControlsProps {
-  solved: boolean;
+  finished: boolean;
   canHint: boolean;
+  hintLevel: 0 | 1 | 2;
+  canReveal: boolean;
   onHint: () => void;
+  onReveal: () => void;
   onReset: () => void;
   onNext: () => void;
 }
@@ -35,19 +38,24 @@ function ControlButton({
   );
 }
 
-export function PuzzleControls({ solved, canHint, onHint, onReset, onNext }: PuzzleControlsProps) {
+export function PuzzleControls({ finished, canHint, hintLevel, canReveal, onHint, onReveal, onReset, onNext }: PuzzleControlsProps) {
+  const hintTitle = hintLevel === 0 ? 'Highlight the piece to move' : hintLevel === 1 ? 'Show the move' : 'Hint shown';
   return (
-    <div className="grid grid-cols-3 gap-1.5">
-      <ControlButton title="Highlight the piece to move" onClick={onHint} disabled={!canHint || solved}>
+    <div className="controls grid grid-cols-4 gap-1">
+      <ControlButton title={hintTitle} onClick={onHint} disabled={!canHint || finished}>
         <Lightbulb size={14} />
-        <span>Hint</span>
+        <span className="control-label">Hint</span>
+      </ControlButton>
+      <ControlButton title="Play the solution. This attempt won't count." onClick={onReveal} disabled={!canReveal}>
+        <Eye size={14} />
+        <span className="control-label">Reveal</span>
       </ControlButton>
       <ControlButton title="Restart this puzzle" onClick={onReset}>
         <RotateCcw size={14} />
-        <span>Reset</span>
+        <span className="control-label">Reset</span>
       </ControlButton>
-      <ControlButton title="Next puzzle" onClick={onNext} primary={solved}>
-        <span>Next</span>
+      <ControlButton title="Next puzzle" onClick={onNext} primary={finished}>
+        <span className="control-label">Next</span>
         <ChevronRight size={14} />
       </ControlButton>
     </div>

@@ -23,6 +23,16 @@ describe('StorageService', () => {
     expect(storage.getSummary().solvedCount).toBe(2);
   });
 
+  it('spends an attempt when the solution is revealed, so a later solve does not count', async () => {
+    const storage = new StorageService(new MemoryStore());
+    expect(await storage.recordFailure('attempt-1')).toBe(true);
+    expect(await storage.recordFailure('attempt-1')).toBe(false);
+    expect(await storage.recordSolve('attempt-1')).toBe(false);
+    expect(storage.getSummary().solvedCount).toBe(0);
+    expect(await storage.recordSolve('attempt-2')).toBe(true);
+    expect(storage.getSummary().solvedCount).toBe(1);
+  });
+
   it('keeps progress across restarts that reuse the same store', async () => {
     const store = new MemoryStore();
     await new StorageService(store).recordSolve('a1');

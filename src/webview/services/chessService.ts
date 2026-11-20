@@ -1,15 +1,21 @@
 import { Chess, type Color, type Move, type PieceSymbol, type Square } from 'chess.js';
 import type { Puzzle } from '../../shared/types';
 
-export type PuzzleStatus = 'playing' | 'solved';
+export type PuzzleStatus = 'playing' | 'solved' | 'failed';
 
 export type MoveResult =
   | { kind: 'illegal' }
+  | { kind: 'needsPromotion' }
   | { kind: 'wrong'; san: string }
   | { kind: 'correct'; san: string }
   | { kind: 'solved'; san: string };
 
 export interface LastMove {
+  from: Square;
+  to: Square;
+}
+
+export interface HintMove {
   from: Square;
   to: Square;
 }
@@ -42,7 +48,9 @@ function toUci(move: Pick<Move, 'from' | 'to' | 'promotion'>): string {
  * Flow: the constructor plays the opponent's setup move (`moves[0]`). The player
  * then submits moves; a correct move is applied and the opponent's reply waits in
  * `pendingReply` until the UI calls `playOpponentReply()`, so the board can
- * animate the two moves separately.
+ * animate the two moves separately. A promoting move is refused until the caller
+ * names the piece. Revealing the line marks the attempt failed and plays the
+ * remaining moves one ply at a time.
  */
 export class PuzzleSession {
   readonly puzzle: Puzzle;
@@ -109,12 +117,21 @@ export class PuzzleSession {
     return Math.floor(this.nextPly / 2);
   }
 
+  /** Scripted plies not yet played, including an opponent reply that is due. */
+  get pliesRemaining(): number {
+    return Math.max(0, this.puzzle.moves.length - this.nextPly);
+  }
+
   get inCheck(): boolean {
     return this.chess.inCheck();
   }
 
   get isCheckmate(): boolean {
     return this.chess.isCheckmate();
+  }
+
+  get isStalemate(): boolean {
+    return this.chess.isStalemate();
   }
 
   get checkedKingSquare(): Square | null {
@@ -143,10 +160,16 @@ export class PuzzleSession {
       .some((m) => m.to === to && (m.isCapture() || m.isEnPassant()));
   }
 
-  /** The from-square of the move the player should play next, for hints. */
-  get hintSquare(): Square | null {
+  /** The move the player should find next. Null when it is not their turn. */
+  get hintMove(): HintMove | null {
     if (!this.isPlayerTurn) return null;
-    return parseUci(this.puzzle.moves[this.nextPly]!).from;
+    const { from, to } = parseUci(this.puzzle.moves[this.nextPly]!);
+    return { from, to };
+  }
+
+  /** The from-square of the move the player should play next, for the first hint. */
+  get hintSquare(): Square | null {
+    return this.hintMove?.from ?? null;
   }
 
   submitMove(from: Square, to: Square, promotion?: PieceSymbol): MoveResult {
@@ -155,10 +178,12 @@ export class PuzzleSession {
     const candidates = this.chess.moves({ square: from, verbose: true }).filter((m) => m.to === to);
     if (candidates.length === 0) return { kind: 'illegal' };
 
-    const expected = this.puzzle.moves[this.nextPly]!;
     const isPromotion = candidates.some((m) => m.promotion);
-    const expectedPromotion = parseUci(expected).promotion;
-    const chosenPromotion = isPromotion ? (promotion ?? expectedPromotion ?? 'q') : undefined;
+    if (isPromotion && !promotion) return { kind: 'needsPromotion' };
+    if (isPromotion && !candidates.some((m) => m.promotion === promotion)) return { kind: 'illegal' };
+
+    const chosenPromotion = isPromotion ? promotion : undefined;
+    const expected = this.puzzle.moves[this.nextPly]!;
     const uci = toUci({ from, to, promotion: chosenPromotion });
 
     const isFinalMove = this.nextPly === this.puzzle.moves.length - 1;
@@ -190,6 +215,25 @@ export class PuzzleSession {
   /** Plays the opponent's scripted reply. Returns its SAN, or null if none is due. */
   playOpponentReply(): string | null {
     if (!this.pendingReply) return null;
+    const san = this.applyUci(this.puzzle.moves[this.nextPly]!);
+    this.nextPly += 1;
+    return san;
+  }
+
+  /**
+   * Gives up on the attempt. The remaining line is played back with `playRevealPly`.
+   * Returns false when the puzzle is already solved or already revealed.
+   */
+  startReveal(): boolean {
+    if (this._status !== 'playing') return false;
+    this._status = 'failed';
+    return true;
+  }
+
+  /** Plays the next scripted ply of a revealed line. Returns its SAN, or null when finished. */
+  playRevealPly(): string | null {
+    if (this._status !== 'failed') return null;
+    if (this.nextPly >= this.puzzle.moves.length) return null;
     const san = this.applyUci(this.puzzle.moves[this.nextPly]!);
     this.nextPly += 1;
     return san;

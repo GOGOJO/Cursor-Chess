@@ -1,17 +1,23 @@
-import type { Square } from 'chess.js';
+import type { PieceSymbol, Square } from 'chess.js';
 import type { CSSProperties } from 'react';
-import { Chessboard } from 'react-chessboard';
-import type { PuzzleSession } from '../services/chessService';
+import { Chessboard, defaultArrowOptions } from 'react-chessboard';
+import type { HintMove, PuzzleSession } from '../services/chessService';
+import { PromotionPicker } from './PromotionPicker';
 
 interface ChessBoardProps {
   session: PuzzleSession;
   selected: Square | null;
   wrongSquare: Square | null;
   hintSquare: Square | null;
+  hintArrow: HintMove | null;
+  revealing: boolean;
+  promotion: boolean;
   onMove: (from: Square, to: Square) => boolean;
   onSquareClick: (square: Square) => void;
   onPieceDragStart: (square: Square) => void;
   onDragCancel: () => void;
+  onPromote: (piece: PieceSymbol) => void;
+  onCancelPromotion: () => void;
 }
 
 const COLORS = {
@@ -22,6 +28,7 @@ const COLORS = {
   wrong: 'rgba(205, 96, 80, 0.55)',
   dot: 'rgba(24, 25, 27, 0.28)',
   hint: '#a7cf8a',
+  hintArrow: '#e2c56b',
 };
 
 function buildSquareStyles({
@@ -71,7 +78,7 @@ function buildSquareStyles({
 }
 
 export function ChessBoard(props: ChessBoardProps) {
-  const { session, onMove, onSquareClick, onPieceDragStart, onDragCancel } = props;
+  const { session, hintArrow, revealing, promotion, onMove, onSquareClick, onPieceDragStart, onDragCancel, onPromote, onCancelPromotion } = props;
   const orientation = session.playerColor === 'w' ? 'white' : 'black';
   const playerPrefix = session.playerColor;
 
@@ -83,6 +90,10 @@ export function ChessBoard(props: ChessBoardProps) {
           position: session.fen,
           boardOrientation: orientation,
           squareStyles: buildSquareStyles(props),
+          arrows: hintArrow
+            ? [{ startSquare: hintArrow.from, endSquare: hintArrow.to, color: COLORS.hintArrow }]
+            : [],
+          arrowOptions: hintArrow ? { ...defaultArrowOptions, opacity: 1, arrowWidthDenominator: 4, arrowStartOffset: 0.32 } : undefined,
           lightSquareStyle: { backgroundColor: COLORS.light },
           darkSquareStyle: { backgroundColor: COLORS.dark },
           lightSquareNotationStyle: { color: COLORS.dark },
@@ -91,10 +102,10 @@ export function ChessBoard(props: ChessBoardProps) {
           numericNotationStyle: { fontSize: '9px', fontWeight: 600, top: 2, left: 3, position: 'absolute' },
           dropSquareStyle: { boxShadow: 'inset 0 0 0 3px rgba(255, 248, 230, 0.55)' },
           boardStyle: { borderRadius: '6px' },
-          animationDurationInMs: 180,
-          allowDrawingArrows: true,
+          animationDurationInMs: revealing ? 360 : 180,
+          allowDrawingArrows: !promotion,
           allowDragOffBoard: false,
-          canDragPiece: ({ piece }) => session.isPlayerTurn && piece.pieceType.startsWith(playerPrefix),
+          canDragPiece: ({ piece }) => !promotion && session.isPlayerTurn && piece.pieceType.startsWith(playerPrefix),
           onPieceDrag: ({ square }) => {
             if (square) onPieceDragStart(square as Square);
           },
@@ -106,6 +117,7 @@ export function ChessBoard(props: ChessBoardProps) {
           onSquareClick: ({ square }) => onSquareClick(square as Square),
         }}
       />
+      {promotion && <PromotionPicker color={session.playerColor} onPick={onPromote} onCancel={onCancelPromotion} />}
     </div>
   );
 }
