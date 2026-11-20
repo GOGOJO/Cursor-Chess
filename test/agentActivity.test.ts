@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AgentActivity, applyHookEvent, emptyActivity, gateNotice, parseHookLine, splitCompleteLines } from '../src/extension/agent/agentActivity';
+import { AgentActivity, applyHookEvent, emptyActivity, followBoard, gateNotice, idleBoardFollow, parseHookLine, splitCompleteLines, type BoardFollowState } from '../src/extension/agent/agentActivity';
 import { agentHookProgram, agentHookWrapper, hookAlreadyInstalled, installHookFiles, mergeHookConfig } from '../src/extension/agent/hookConfig';
 
 describe('hook events', () => {
@@ -45,6 +45,47 @@ describe('notice gate', () => {
 
   it('drops a held notice when notifications are turned off', () => {
     expect(gateNotice({ ...base, notificationsEnabled: false })).toEqual({ show: false, pending: false });
+  });
+});
+
+describe('follow the agent', () => {
+  const step = (state: BoardFollowState, patch: Partial<BoardFollowState>) => followBoard({ ...state, ...patch });
+
+  it('opens a hidden board when an agent starts, then closes it', () => {
+    const opened = step(idleBoardFollow(), { enabled: true, working: true, viewVisible: false });
+    expect(opened.action).toBe('reveal');
+    expect(opened.openedByUs).toBe(true);
+
+    const showing = step(opened, { viewVisible: true, opening: false });
+    expect(showing.action).toBe('none');
+    expect(showing.openedByUs).toBe(true);
+
+    const closed = step(showing, { working: false });
+    expect(closed.action).toBe('hide');
+    expect(closed.openedByUs).toBe(false);
+  });
+
+  it('leaves a board the player already had open', () => {
+    const started = step(idleBoardFollow(), { enabled: true, working: true, viewVisible: true });
+    expect(started.action).toBe('none');
+    expect(started.alreadyOpen).toBe(true);
+    expect(step(started, { working: false, viewVisible: true }).action).toBe('none');
+  });
+
+  it('does not reopen a board the player closed during the agent', () => {
+    const opened = step(idleBoardFollow(), { enabled: true, working: true });
+    const showing = step(opened, { viewVisible: true, opening: false });
+    const dismissed = step(showing, { viewVisible: false });
+    expect(dismissed.dismissed).toBe(true);
+    expect(dismissed.action).toBe('none');
+    expect(step(dismissed, { viewVisible: false }).action).toBe('none');
+    expect(step(dismissed, { working: false }).action).toBe('none');
+  });
+
+  it('stays still when the setting is off', () => {
+    const off = step(idleBoardFollow(), { enabled: false, working: true, viewVisible: false });
+    expect(off.action).toBe('none');
+    expect(off.openedByUs).toBe(false);
   });
 });
 

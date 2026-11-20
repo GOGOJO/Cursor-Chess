@@ -17,6 +17,7 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
     hookInstalled: () => boolean;
     working: () => boolean;
     enable: () => void;
+    onSettingsChanged: () => void;
   };
 
   constructor(
@@ -41,6 +42,10 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
       this.agent?.setViewVisible(false);
     });
     this.agent?.setViewVisible(view.visible);
+  }
+
+  isViewVisible(): boolean {
+    return this.view?.visible ?? false;
   }
 
   bindAgent(agent: NonNullable<PuzzleViewProvider['agent']>): void {
@@ -121,6 +126,7 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
       }
       case 'setSettings':
         this.post({ type: 'settings', settings: await this.storage.setSettings(message.settings) });
+        this.agent?.onSettingsChanged();
         break;
       case 'setFilters':
         await this.storage.setFilters(message.filters);
