@@ -102,9 +102,14 @@ function createBrowserFallback(): VsCodeApi {
         sendLibrary();
         await sendNext();
         break;
-      case 'importPuzzles':
-        console.info('Importing needs the extension host. Run the extension with F5 to try it.');
-        break;
+        case 'importPuzzles':
+          console.info('Importing needs the extension host. Run the extension with F5 to try it.');
+          break;
+        case 'puzzleBusy':
+          break;
+        case 'installAgentHook':
+          console.info('Setting up the agent hook needs the extension host. Run the extension with F5 to try it.');
+          break;
     }
   };
 

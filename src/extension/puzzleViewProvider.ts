@@ -10,6 +10,14 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
 
   private view?: vscode.WebviewView;
   private current?: { puzzle: Puzzle; notice?: string };
+  private pendingProgress = false;
+  private agent?: {
+    setPuzzleBusy: (busy: boolean) => void;
+    setViewVisible: (visible: boolean) => void;
+    hookInstalled: () => boolean;
+    working: () => boolean;
+    enable: () => void;
+  };
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -27,9 +35,33 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
     };
     view.webview.html = this.renderHtml(view.webview, webviewRoot);
     view.webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => this.handleMessage(message));
+    view.onDidChangeVisibility(() => this.agent?.setViewVisible(view.visible));
     view.onDidDispose(() => {
       this.view = undefined;
+      this.agent?.setViewVisible(false);
     });
+    this.agent?.setViewVisible(view.visible);
+  }
+
+  bindAgent(agent: NonNullable<PuzzleViewProvider['agent']>): void {
+    this.agent = agent;
+    this.agent.setViewVisible(this.view?.visible ?? false);
+  }
+
+  postAgent(state: { working: boolean; hookInstalled: boolean }): void {
+    this.post({ type: 'agent', ...state });
+  }
+
+  postSettings(): void {
+    this.post({ type: 'settings', settings: this.storage.getSettings() });
+  }
+
+  showProgress(): void {
+    if (!this.view) {
+      this.pendingProgress = true;
+      return;
+    }
+    this.post({ type: 'showView', view: 'progress' });
   }
 
   async showNextPuzzle(): Promise<void> {
@@ -67,9 +99,14 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
     switch (message.type) {
       case 'ready':
         this.refreshLibrary();
-        this.post({ type: 'settings', settings: this.storage.getSettings() });
+        this.postSettings();
         this.post({ type: 'progress', progress: this.storage.getSnapshot() });
+        this.postAgent({ working: this.agent?.working() ?? false, hookInstalled: this.agent?.hookInstalled() ?? false });
         await this.showCurrentOrResume();
+        if (this.pendingProgress) {
+          this.pendingProgress = false;
+          this.showProgress();
+        }
         break;
       case 'requestNextPuzzle':
         await this.showNextPuzzle();
@@ -92,6 +129,12 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
         break;
       case 'importPuzzles':
         this.onImportRequested();
+        break;
+      case 'puzzleBusy':
+        this.agent?.setPuzzleBusy(message.busy === true);
+        break;
+      case 'installAgentHook':
+        void this.agent?.enable();
         break;
     }
   }

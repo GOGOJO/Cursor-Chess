@@ -11,7 +11,7 @@ export interface Settings {
   coordinates: boolean;
   /** Load another puzzle a moment after a solve. */
   autoNext: boolean;
-  /** Quiet notice when an agent finishes. Read by the agent integration in the next phase. */
+  /** Quiet notice when an agent finishes. It waits while a puzzle is on screen. */
   notifyOnAgent: boolean;
   boardTheme: BoardThemeId;
   pieceStyle: PieceStyleId;

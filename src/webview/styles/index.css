@@ -49,6 +49,14 @@ a {
   animation: solve-ring 700ms ease;
 }
 
+.agent-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  animation: agent-pulse 1.6s ease-in-out infinite;
+}
+
 .promotion-overlay {
   position: absolute;
   inset: 4px;
@@ -474,6 +482,16 @@ a {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes agent-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
   }
 }
 

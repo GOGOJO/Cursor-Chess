@@ -55,6 +55,10 @@ export function usePuzzle() {
   const [library, setLibrary] = useState<LibraryInfo | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [agentWorking, setAgentWorking] = useState(false);
+  const [hookInstalled, setHookInstalled] = useState(false);
+  const [puzzleEpoch, setPuzzleEpoch] = useState(0);
+  const [requestedView, setRequestedView] = useState<'progress' | null>(null);
 
   const clearTimers = () => {
     timersRef.current.forEach((id) => window.clearTimeout(id));
@@ -105,6 +109,7 @@ export function usePuzzle() {
     } else {
       attemptRef.current = newAttempt(puzzle.id);
     }
+    setPuzzleEpoch((epoch) => epoch + 1);
     rerender();
   }, []);
 
@@ -122,6 +127,11 @@ export function usePuzzle() {
         settingsRef.current = next;
         setSettings(next);
         setSoundsEnabled(next.sound);
+      } else if (message.type === 'agent') {
+        setAgentWorking(message.working);
+        setHookInstalled(message.hookInstalled);
+      } else if (message.type === 'showView') {
+        setRequestedView(message.view);
       }
     });
     postToExtension({ type: 'ready' });
@@ -131,6 +141,10 @@ export function usePuzzle() {
       cancelAutoNext();
     };
   }, [loadPuzzle]);
+
+  useEffect(() => {
+    postToExtension({ type: 'puzzleBusy', busy: sessionRef.current?.status === 'playing' });
+  }, [feedback.kind, puzzleEpoch]);
 
   const tryMove = useCallback((from: Square, to: Square, promotion?: PieceSymbol): boolean => {
     const session = sessionRef.current;
@@ -310,6 +324,11 @@ export function usePuzzle() {
     notice,
     settings,
     updateSettings,
+    agentWorking,
+    hookInstalled,
+    requestedView,
+    clearRequestedView: useCallback(() => setRequestedView(null), []),
+    installAgentHook: useCallback(() => postToExtension({ type: 'installAgentHook' }), []),
     tryMove,
     onSquareClick,
     onPieceDragStart,

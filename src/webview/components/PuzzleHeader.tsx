@@ -12,14 +12,16 @@ interface AppBarProps {
   onToggleSettings: () => void;
   soundOn: boolean;
   onToggleSound: () => void;
+  agentWorking: boolean;
 }
 
-export function AppBar({ progress, view, onToggleProgress, onToggleSettings, soundOn, onToggleSound }: AppBarProps) {
+export function AppBar({ progress, view, onToggleProgress, onToggleSettings, soundOn, onToggleSound, agentWorking }: AppBarProps) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
         <PixelKnight size={16} className="text-accent" />
         <span className="text-[13px] font-semibold tracking-tight text-ink">Cursor Chess</span>
+        {agentWorking && <span className="agent-dot" title="An agent is working" aria-label="An agent is working" />}
       </div>
       <div className="flex items-center gap-1.5">
         <button

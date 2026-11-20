@@ -3,7 +3,9 @@ import { BOARD_THEMES, type BoardThemeId, type PieceStyleId, type Settings } fro
 
 interface SettingsPanelProps {
   settings: Settings;
+  hookInstalled: boolean;
   onChange: (patch: Partial<Settings>) => void;
+  onInstallHook: () => void;
   onBack: () => void;
 }
 
@@ -19,7 +21,7 @@ function Switch({ label, hint, checked, onChange }: { label: string; hint: strin
   );
 }
 
-export function SettingsPanel({ settings, onChange, onBack }: SettingsPanelProps) {
+export function SettingsPanel({ settings, hookInstalled, onChange, onInstallHook, onBack }: SettingsPanelProps) {
   return (
     <section className="flex flex-col gap-4" aria-label="Settings">
       <div className="flex items-center justify-between">
@@ -96,10 +98,15 @@ export function SettingsPanel({ settings, onChange, onBack }: SettingsPanelProps
         />
         <Switch
           label="Agent finished"
-          hint="Saved for a quiet notice when an agent finishes. It stays quiet during a puzzle."
+          hint="A quiet notice when an agent finishes. It waits while a puzzle is on screen."
           checked={settings.notifyOnAgent}
           onChange={(notifyOnAgent) => onChange({ notifyOnAgent })}
         />
+        {!hookInstalled && (
+          <button type="button" className="link-btn self-start text-[11px]" onClick={onInstallHook}>
+            Set up the agent hook
+          </button>
+        )}
       </div>
     </section>
   );

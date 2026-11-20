@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { startAgentNotices } from './agent/startAgentNotices';
 import { registerCommands } from './commands';
 import { clearImportedPuzzles, importPuzzles } from './importPuzzles';
 import { LocalPuzzleProvider } from './providers/localPuzzleProvider';
@@ -45,6 +46,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       importPuzzles: runImport,
       clearImportedPuzzles: () => clearImportedPuzzles(puzzles, () => provider.refreshLibrary()),
     }),
+    startAgentNotices(storage, provider),
   );
 }
 

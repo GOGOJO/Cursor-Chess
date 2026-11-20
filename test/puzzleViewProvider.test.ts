@@ -51,7 +51,7 @@ function createHarness(data = new Map<string, unknown>()) {
   };
   const onImport = vi.fn();
   const provider = new PuzzleViewProvider({ path: '/ext' } as never, new LocalPuzzleProvider(), storage, onImport);
-  provider.resolveWebviewView({ webview, onDidDispose: () => {} } as never);
+  provider.resolveWebviewView({ webview, visible: true, onDidChangeVisibility: () => {}, onDidDispose: () => {} } as never);
   const last = <T extends ExtensionToWebviewMessage['type']>(type: T) =>
     posted.filter((m) => m.type === type).at(-1) as Extract<ExtensionToWebviewMessage, { type: T }>;
   return { provider, webview, posted, storage, onImport, last, send: (m: WebviewToExtensionMessage) => receive(m) };
@@ -70,7 +70,7 @@ describe('PuzzleViewProvider', () => {
   it('sends library, progress, and the first puzzle on ready, then rates a solve once', async () => {
     const { posted, send, last } = createHarness();
     await send({ type: 'ready' });
-    expect(posted.map((m) => m.type)).toEqual(['library', 'settings', 'progress', 'loadPuzzle']);
+    expect(posted.map((m) => m.type)).toEqual(['library', 'settings', 'progress', 'agent', 'loadPuzzle']);
     expect(last('library').library).toMatchObject({ totalCount: SAMPLE_PUZZLES.length, importedCount: 0 });
     expect(last('progress').progress).toMatchObject({ rating: 1200, solved: 0 });
     const first = last('loadPuzzle') as Loaded;
@@ -126,6 +126,13 @@ describe('PuzzleViewProvider', () => {
     await send({ type: 'requestNextPuzzle', currentPuzzleId: '' });
     expect(storage.getActiveAttempt()).toBeNull();
     expect(last('loadPuzzle').resume).toBeUndefined();
+  });
+
+  it('opens the progress view when statistics are requested', async () => {
+    const { provider, posted, send } = createHarness();
+    await send({ type: 'ready' });
+    provider.showProgress();
+    expect(posted.at(-1)).toEqual({ type: 'showView', view: 'progress' });
   });
 
   it('saves settings and echoes a cleaned copy', async () => {

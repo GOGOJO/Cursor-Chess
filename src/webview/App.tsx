@@ -1,5 +1,5 @@
 import { Info } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BOARD_THEMES } from '../shared/settings';
 import { ChessBoard } from './components/ChessBoard';
 import { PixelKnight } from './components/PixelKnight';
@@ -19,6 +19,13 @@ export function App() {
   const { session, library, progress, settings } = puzzle;
   const reducedMotion = usePrefersReducedMotion();
   const [view, setView] = useState<'puzzle' | 'progress' | 'settings'>('puzzle');
+
+  useEffect(() => {
+    if (puzzle.requestedView === 'progress') {
+      setView('progress');
+      puzzle.clearRequestedView();
+    }
+  }, [puzzle.requestedView, puzzle.clearRequestedView]);
 
   if (!session) {
     return (
@@ -43,6 +50,7 @@ export function App() {
           onToggleSettings={() => showPanel('settings')}
           soundOn={settings.sound}
           onToggleSound={puzzle.toggleSound}
+          agentWorking={puzzle.agentWorking}
         />
         {!progressOpen && !settingsOpen && <PuzzleHeader puzzle={session.puzzle} />}
       </header>
@@ -50,7 +58,13 @@ export function App() {
       {progressOpen ? (
         <ProgressPanel progress={progress} onBack={() => setView('puzzle')} />
       ) : settingsOpen ? (
-        <SettingsPanel settings={settings} onChange={puzzle.updateSettings} onBack={() => setView('puzzle')} />
+        <SettingsPanel
+          settings={settings}
+          hookInstalled={puzzle.hookInstalled}
+          onChange={puzzle.updateSettings}
+          onInstallHook={puzzle.installAgentHook}
+          onBack={() => setView('puzzle')}
+        />
       ) : (
         <>
           {library && <PuzzleFilters filters={library.filters} onChange={puzzle.setFilters} />}
