@@ -1,0 +1,167 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-canvas: #18191b;
+  --color-surface: #1f2022;
+  --color-surface-raised: #2a2b2e;
+  --color-line: #303134;
+  --color-ink: #ebe6dc;
+  --color-ink-muted: #a39d92;
+  --color-ink-faint: #6b6760;
+  --color-accent: #8fb573;
+  --color-gold: #d6b86a;
+  --color-danger: #d27464;
+  --font-sans: var(--vscode-font-family, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+a {
+  color: inherit;
+}
+
+.board-frame {
+  width: 100%;
+  border-radius: 8px;
+  padding: 4px;
+  background: #121314;
+  box-shadow:
+    0 0 0 1px var(--color-line),
+    0 8px 24px -12px rgba(0, 0, 0, 0.7);
+}
+
+.pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  transition: background-color 200ms ease;
+}
+
+.control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-line);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 80ms ease;
+}
+
+.control-btn:hover:not(:disabled) {
+  background: #333438;
+}
+
+.control-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.control-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.control-btn:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.control-btn-primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-canvas);
+  font-weight: 600;
+}
+
+.control-btn-primary:hover:not(:disabled) {
+  background: #9cc27f;
+}
+
+/* Stepped corners give the badge a pixel-art silhouette. */
+.pixel-badge {
+  clip-path: polygon(
+    0 4px, 2px 4px, 2px 2px, 4px 2px, 4px 0,
+    calc(100% - 4px) 0, calc(100% - 4px) 2px, calc(100% - 2px) 2px, calc(100% - 2px) 4px, 100% 4px,
+    100% calc(100% - 4px), calc(100% - 2px) calc(100% - 4px), calc(100% - 2px) calc(100% - 2px), calc(100% - 4px) calc(100% - 2px), calc(100% - 4px) 100%,
+    4px 100%, 4px calc(100% - 2px), 2px calc(100% - 2px), 2px calc(100% - 4px), 0 calc(100% - 4px)
+  );
+}
+
+.solved-banner {
+  animation: solved-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.solved-banner .pixel-badge {
+  animation: badge-pop 420ms steps(4) 80ms both;
+}
+
+.feedback-shake {
+  animation: shake 300ms ease;
+}
+
+@keyframes solved-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
