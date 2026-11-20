@@ -51,6 +51,9 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
           this.post({ type: 'summary', summary: this.storage.getSummary() });
         }
         break;
+      case 'puzzleFailed':
+        await this.storage.recordFailure(message.attemptId);
+        break;
     }
   }
 

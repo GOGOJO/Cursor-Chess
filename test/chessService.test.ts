@@ -120,10 +120,14 @@ describe('PuzzleSession multi-move progression', () => {
     expect(alternative.submitMove('b1', 'b8').kind).toBe('solved');
   });
 
-  it('defaults promotion to the expected piece and rejects the wrong promotion', () => {
+  it('requires an explicit promotion and rejects the wrong piece', () => {
     const session = new PuzzleSession(UNDERPROMOTION);
+    const start = session.fen;
+    expect(session.submitMove('e7', 'e8').kind).toBe('needsPromotion');
+    expect(session.fen).toBe(start);
+    expect(session.mistakes).toBe(0);
     expect(session.submitMove('e7', 'e8', 'q').kind).toBe('wrong');
-    expect(session.submitMove('e7', 'e8').kind).toBe('solved');
+    expect(session.submitMove('e7', 'e8', 'n').kind).toBe('solved');
   });
 });
 

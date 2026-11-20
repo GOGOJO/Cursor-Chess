@@ -35,6 +35,8 @@ function createBrowserFallback(): VsCodeApi {
       } else if (message.type === 'puzzleSolved') {
         solvedCount += 1;
         reply({ type: 'summary', summary: { solvedCount } });
+      } else if (message.type === 'puzzleFailed') {
+        // The attempt is spent. The webview does not send a solve for it afterwards.
       }
     },
   };

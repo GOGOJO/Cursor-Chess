@@ -56,6 +56,10 @@ describe('PuzzleViewProvider', () => {
     expect(summaries.at(-1)).toEqual({ type: 'summary', summary: { solvedCount: 1 } });
     expect(summaries).toHaveLength(2);
 
+    await send({ type: 'puzzleFailed', puzzleId: first.puzzle.id, attemptId: 'attempt-revealed' });
+    await send({ type: 'puzzleSolved', puzzleId: first.puzzle.id, attemptId: 'attempt-revealed', mistakes: 2 });
+    expect(posted.filter((m) => m.type === 'summary').at(-1)).toEqual({ type: 'summary', summary: { solvedCount: 1 } });
+
     await send({ type: 'requestNextPuzzle', currentPuzzleId: first.puzzle.id });
     const next = posted.at(-1) as Extract<ExtensionToWebviewMessage, { type: 'loadPuzzle' }>;
     expect(next.type).toBe('loadPuzzle');

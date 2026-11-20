@@ -17,26 +17,32 @@ export function App() {
     );
   }
 
-  const solved = session.status === 'solved';
-
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-3 px-3 pt-3 pb-4">
-      <PuzzleHeader puzzle={session.puzzle} summary={puzzle.summary} />
+      <PuzzleHeader puzzle={session.puzzle} summary={puzzle.summary} soundOn={puzzle.soundOn} onToggleSound={puzzle.toggleSound} />
       <ChessBoard
         session={session}
         selected={puzzle.selected}
         wrongSquare={puzzle.wrongSquare}
-        hintSquare={puzzle.hintVisible ? session.hintSquare : null}
+        hintSquare={puzzle.hintLevel >= 1 ? session.hintSquare : null}
+        hintArrow={puzzle.hintLevel >= 2 ? session.hintMove : null}
+        revealing={puzzle.feedback.kind === 'revealing'}
+        promotion={puzzle.pendingPromotion !== null}
         onMove={puzzle.tryMove}
         onSquareClick={puzzle.onSquareClick}
         onPieceDragStart={puzzle.onPieceDragStart}
         onDragCancel={puzzle.clearSelection}
+        onPromote={puzzle.choosePromotion}
+        onCancelPromotion={puzzle.cancelPromotion}
       />
       <PuzzleFeedback session={session} feedback={puzzle.feedback} />
       <PuzzleControls
-        solved={solved}
-        canHint={session.isPlayerTurn}
+        finished={puzzle.feedback.kind === 'solved' || puzzle.feedback.kind === 'failed'}
+        canHint={session.isPlayerTurn && puzzle.hintLevel < 2}
+        hintLevel={puzzle.hintLevel}
+        canReveal={session.status === 'playing'}
         onHint={puzzle.showHint}
+        onReveal={puzzle.revealSolution}
         onReset={puzzle.reset}
         onNext={puzzle.nextPuzzle}
       />
