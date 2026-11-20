@@ -1,5 +1,6 @@
 import { Info } from 'lucide-react';
 import { useState } from 'react';
+import { BOARD_THEMES } from '../shared/settings';
 import { ChessBoard } from './components/ChessBoard';
 import { PixelKnight } from './components/PixelKnight';
 import { ProgressPanel } from './components/ProgressPanel';
@@ -7,14 +8,17 @@ import { PuzzleControls } from './components/PuzzleControls';
 import { PuzzleFeedback } from './components/PuzzleFeedback';
 import { PuzzleFilters } from './components/PuzzleFilters';
 import { AppBar, PuzzleHeader } from './components/PuzzleHeader';
+import { SettingsPanel } from './components/SettingsPanel';
 import { usePuzzle } from './hooks/usePuzzle';
+import { usePrefersReducedMotion } from './hooks/usePrefersReducedMotion';
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
 export function App() {
   const puzzle = usePuzzle();
-  const { session, library, progress } = puzzle;
-  const [showProgress, setShowProgress] = useState(false);
+  const { session, library, progress, settings } = puzzle;
+  const reducedMotion = usePrefersReducedMotion();
+  const [view, setView] = useState<'puzzle' | 'progress' | 'settings'>('puzzle');
 
   if (!session) {
     return (
@@ -25,23 +29,28 @@ export function App() {
   }
 
   const filtered = library && (library.filters.difficulty !== 'any' || library.filters.theme !== 'any');
-  const progressOpen = showProgress && progress !== null;
+  const progressOpen = view === 'progress' && progress !== null;
+  const settingsOpen = view === 'settings';
+  const showPanel = (next: 'progress' | 'settings') => setView((current) => (current === next ? 'puzzle' : next));
 
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-3 px-3 pt-3 pb-4">
       <header className="flex flex-col gap-2.5">
         <AppBar
           progress={progress}
-          showingProgress={progressOpen}
-          onToggleProgress={() => setShowProgress((open) => !open)}
-          soundOn={puzzle.soundOn}
+          view={progressOpen ? 'progress' : settingsOpen ? 'settings' : 'puzzle'}
+          onToggleProgress={() => showPanel('progress')}
+          onToggleSettings={() => showPanel('settings')}
+          soundOn={settings.sound}
           onToggleSound={puzzle.toggleSound}
         />
-        {!progressOpen && <PuzzleHeader puzzle={session.puzzle} />}
+        {!progressOpen && !settingsOpen && <PuzzleHeader puzzle={session.puzzle} />}
       </header>
 
       {progressOpen ? (
-        <ProgressPanel progress={progress} onBack={() => setShowProgress(false)} />
+        <ProgressPanel progress={progress} onBack={() => setView('puzzle')} />
+      ) : settingsOpen ? (
+        <SettingsPanel settings={settings} onChange={puzzle.updateSettings} onBack={() => setView('puzzle')} />
       ) : (
         <>
           {library && <PuzzleFilters filters={library.filters} onChange={puzzle.setFilters} />}
@@ -59,6 +68,11 @@ export function App() {
             hintArrow={puzzle.hintLevel >= 2 ? session.hintMove : null}
             revealing={puzzle.feedback.kind === 'revealing'}
             promotion={puzzle.pendingPromotion !== null}
+            palette={BOARD_THEMES[settings.boardTheme]}
+            pieceStyle={settings.pieceStyle}
+            motion={settings.animate && !reducedMotion}
+            coordinates={settings.coordinates}
+            solved={puzzle.feedback.kind === 'solved'}
             onMove={puzzle.tryMove}
             onSquareClick={puzzle.onSquareClick}
             onPieceDragStart={puzzle.onPieceDragStart}

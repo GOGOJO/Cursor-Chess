@@ -1,6 +1,6 @@
 import type { PieceSymbol } from 'chess.js';
 import { useEffect, useRef } from 'react';
-import { defaultPieces } from 'react-chessboard';
+import { defaultPieces, type PieceRenderObject } from 'react-chessboard';
 
 const CHOICES: { piece: PieceSymbol; label: string }[] = [
   { piece: 'q', label: 'Queen' },
@@ -11,11 +11,12 @@ const CHOICES: { piece: PieceSymbol; label: string }[] = [
 
 interface PromotionPickerProps {
   color: 'w' | 'b';
+  pieces?: PieceRenderObject;
   onPick: (piece: PieceSymbol) => void;
   onCancel: () => void;
 }
 
-export function PromotionPicker({ color, onPick, onCancel }: PromotionPickerProps) {
+export function PromotionPicker({ color, pieces, onPick, onCancel }: PromotionPickerProps) {
   const firstButton = useRef<HTMLButtonElement>(null);
   const tile = color === 'w' ? '#7d8f68' : '#e3d9c3';
 
@@ -34,7 +35,7 @@ export function PromotionPicker({ color, onPick, onCancel }: PromotionPickerProp
         <span className="text-[11px] text-ink-muted">Promote to</span>
         <div className="promotion-choices">
           {CHOICES.map(({ piece, label }, index) => {
-            const draw = defaultPieces[`${color}${piece.toUpperCase()}`];
+            const draw = (pieces ?? defaultPieces)[`${color}${piece.toUpperCase()}`];
             return (
               <button
                 key={piece}

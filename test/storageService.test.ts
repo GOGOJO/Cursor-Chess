@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LocalPuzzleProvider } from '../src/extension/providers/localPuzzleProvider';
 import { sanitizeAttempt, sanitizeProgress, StorageService, type KeyValueStore } from '../src/extension/storage/storageService';
+import { DEFAULT_SETTINGS, sanitizeSettings } from '../src/shared/settings';
 import type { AttemptState } from '../src/shared/progression';
 import { SAMPLE_PUZZLES } from '../src/shared/samplePuzzles';
 
@@ -82,6 +83,22 @@ describe('StorageService progress', () => {
     expect(storage.getActiveAttempt()).toBeNull();
     expect(sanitizeAttempt({ ...attempt(), mistakes: -1 })).toBeNull();
     expect(sanitizeProgress({ version: 2 }, 3)).toMatchObject({ solved: 3 });
+  });
+});
+
+describe('StorageService settings', () => {
+  it('defaults settings, saves them, and drops malformed values', async () => {
+    const store = new MemoryStore();
+    const storage = new StorageService(store);
+    expect(storage.getSettings()).toEqual(DEFAULT_SETTINGS);
+
+    const saved = await storage.setSettings({ ...DEFAULT_SETTINGS, sound: true, boardTheme: 'slate', pieceStyle: 'letters' });
+    expect(saved).toMatchObject({ sound: true, boardTheme: 'slate', pieceStyle: 'letters' });
+    expect(new StorageService(store).getSettings()).toEqual(saved);
+
+    await store.update('cursorChess.settings', { sound: 'yes', boardTheme: 'neon', pieceStyle: 'wood', animate: false });
+    expect(storage.getSettings()).toMatchObject({ sound: false, boardTheme: 'sage', pieceStyle: 'standard', animate: false });
+    expect(sanitizeSettings(null)).toEqual(DEFAULT_SETTINGS);
   });
 });
 

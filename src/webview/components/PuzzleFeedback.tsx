@@ -99,7 +99,7 @@ export function PuzzleFeedback({ session, feedback, attempt, result }: PuzzleFee
   }
 
   return (
-    <div className="flex min-h-7 items-center justify-between gap-2">
+    <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-2 gap-y-1">
       <div key={`${feedback.kind}-${session.mistakes}-${session.fen}`} className={`flex items-center gap-2 text-[12px] ${tone}`} role="status">
         {icon}
         <span>{text}</span>

@@ -29,6 +29,7 @@ function ControlButton({
     <button
       type="button"
       title={title}
+      aria-label={title}
       onClick={onClick}
       disabled={disabled}
       className={`control-btn ${primary ? 'control-btn-primary' : ''}`}

@@ -1,6 +1,7 @@
 import type { PieceSymbol, Square } from 'chess.js';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { AttemptRecord, AttemptState, ProgressSnapshot } from '../../shared/progression';
+import { DEFAULT_SETTINGS, sanitizeSettings, type Settings } from '../../shared/settings';
 import type { LibraryInfo, Puzzle, PuzzleFilters } from '../../shared/types';
 import { PuzzleSession } from '../services/chessService';
 import { areSoundsEnabled, playSound, setSoundsEnabled, type SoundCue } from '../services/soundService';
@@ -19,6 +20,7 @@ export interface PendingPromotion {
   to: Square;
 }
 
+const AUTO_NEXT_DELAY_MS = 1500;
 const OPPONENT_REPLY_DELAY_MS = 450;
 const REVEAL_START_DELAY_MS = 280;
 const REVEAL_PLY_DELAY_MS = 560;
@@ -41,6 +43,8 @@ export function usePuzzle() {
   const pendingRef = useRef<PendingPromotion | null>(null);
   const hintLevelRef = useRef<0 | 1 | 2>(0);
   const timersRef = useRef<number[]>([]);
+  const autoNextRef = useRef<number | null>(null);
+  const settingsRef = useRef<Settings>(DEFAULT_SETTINGS);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [selected, setSelected] = useState<Square | null>(null);
   const [feedback, setFeedback] = useState<Feedback>({ kind: 'idle' });
@@ -50,11 +54,17 @@ export function usePuzzle() {
   const [progress, setProgress] = useState<ProgressSnapshot | null>(null);
   const [library, setLibrary] = useState<LibraryInfo | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [soundOn, setSoundOn] = useState(areSoundsEnabled);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
 
   const clearTimers = () => {
     timersRef.current.forEach((id) => window.clearTimeout(id));
     timersRef.current = [];
+  };
+  const cancelAutoNext = () => {
+    if (autoNextRef.current !== null) {
+      window.clearTimeout(autoNextRef.current);
+      autoNextRef.current = null;
+    }
   };
   const later = (fn: () => void, ms: number) => {
     timersRef.current.push(window.setTimeout(fn, ms));
@@ -107,12 +117,18 @@ export function usePuzzle() {
         setProgress(message.progress);
       } else if (message.type === 'library') {
         setLibrary(message.library);
+      } else if (message.type === 'settings') {
+        const next = sanitizeSettings(message.settings);
+        settingsRef.current = next;
+        setSettings(next);
+        setSoundsEnabled(next.sound);
       }
     });
     postToExtension({ type: 'ready' });
     return () => {
       unsubscribe();
       clearTimers();
+      cancelAutoNext();
     };
   }, [loadPuzzle]);
 
@@ -242,13 +258,32 @@ export function usePuzzle() {
   const nextPuzzle = useCallback(() => {
     const session = sessionRef.current;
     if (!session) return;
+    cancelAutoNext();
     clearTimers();
     postToExtension({ type: 'requestNextPuzzle', currentPuzzleId: session.puzzle.id });
   }, []);
 
-  const toggleSound = useCallback(() => {
-    setSoundOn(setSoundsEnabled(!areSoundsEnabled()));
+  useEffect(() => {
+    cancelAutoNext();
+    if (feedback.kind !== 'solved' || !settings.autoNext) return;
+    autoNextRef.current = window.setTimeout(() => {
+      autoNextRef.current = null;
+      nextPuzzle();
+    }, AUTO_NEXT_DELAY_MS);
+    return cancelAutoNext;
+  }, [feedback.kind, settings.autoNext, nextPuzzle]);
+
+  const updateSettings = useCallback((patch: Partial<Settings>) => {
+    const next = sanitizeSettings({ ...settingsRef.current, ...patch });
+    settingsRef.current = next;
+    setSettings(next);
+    setSoundsEnabled(next.sound);
+    postToExtension({ type: 'setSettings', settings: next });
   }, []);
+
+  const toggleSound = useCallback(() => {
+    updateSettings({ sound: !areSoundsEnabled() });
+  }, [updateSettings]);
 
   const setFilters = useCallback((filters: PuzzleFilters) => {
     clearTimers();
@@ -273,7 +308,8 @@ export function usePuzzle() {
     progress,
     library,
     notice,
-    soundOn,
+    settings,
+    updateSettings,
     tryMove,
     onSquareClick,
     onPieceDragStart,

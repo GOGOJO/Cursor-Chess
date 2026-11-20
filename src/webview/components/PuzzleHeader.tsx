@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn, Volume2, VolumeX } from 'lucide-react';
+import { ChartNoAxesColumn, Settings, Volume2, VolumeX } from 'lucide-react';
 import type { ProgressSnapshot } from '../../shared/progression';
 import type { Puzzle } from '../../shared/types';
 import { displayThemes } from '../../shared/themes';
@@ -7,13 +7,14 @@ import { PixelKnight } from './PixelKnight';
 
 interface AppBarProps {
   progress: ProgressSnapshot | null;
-  showingProgress: boolean;
+  view: 'puzzle' | 'progress' | 'settings';
   onToggleProgress: () => void;
+  onToggleSettings: () => void;
   soundOn: boolean;
   onToggleSound: () => void;
 }
 
-export function AppBar({ progress, showingProgress, onToggleProgress, soundOn, onToggleSound }: AppBarProps) {
+export function AppBar({ progress, view, onToggleProgress, onToggleSettings, soundOn, onToggleSound }: AppBarProps) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -24,18 +25,30 @@ export function AppBar({ progress, showingProgress, onToggleProgress, soundOn, o
         <button
           type="button"
           className="sound-toggle"
-          title={soundOn ? 'Turn sound off' : 'Turn sound on'}
-          aria-pressed={soundOn}
+            title={soundOn ? 'Turn sound off' : 'Turn sound on'}
+            aria-label={soundOn ? 'Turn sound off' : 'Turn sound on'}
+            aria-pressed={soundOn}
           onClick={onToggleSound}
         >
           {soundOn ? <Volume2 size={13} /> : <VolumeX size={13} />}
+        </button>
+        <button
+          type="button"
+          className="sound-toggle"
+          title={view === 'settings' ? 'Back to the puzzle' : 'Settings'}
+          aria-label={view === 'settings' ? 'Back to the puzzle' : 'Settings'}
+          aria-pressed={view === 'settings'}
+          onClick={onToggleSettings}
+        >
+          <Settings size={13} />
         </button>
         {progress && (
           <button
             type="button"
             className="rating-chip"
-            title={showingProgress ? 'Back to the puzzle' : 'Your rating. Open progress.'}
-            aria-pressed={showingProgress}
+            title={view === 'progress' ? 'Back to the puzzle' : 'Your rating. Open progress.'}
+            aria-label={view === 'progress' ? 'Back to the puzzle' : `Rating ${progress.rating}. Open progress.`}
+            aria-pressed={view === 'progress'}
             onClick={onToggleProgress}
           >
             <ChartNoAxesColumn size={12} strokeWidth={2.25} className="text-gold" />

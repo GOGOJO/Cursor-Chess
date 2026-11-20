@@ -9,6 +9,7 @@ import {
   type ProgressSnapshot,
   type ProgressState,
 } from '../../shared/progression';
+import { DEFAULT_SETTINGS, sanitizeSettings, type Settings } from '../../shared/settings';
 import { DEFAULT_FILTERS, type Puzzle, type PuzzleFilters } from '../../shared/types';
 
 /** The subset of `vscode.Memento` we use, so the service can be tested without VS Code. */
@@ -22,6 +23,7 @@ const PROGRESS_KEY = 'cursorChess.progress';
 const ACTIVE_ATTEMPT_KEY = 'cursorChess.activeAttempt';
 const FILTERS_KEY = 'cursorChess.filters';
 const RECENT_PUZZLES_KEY = 'cursorChess.recentPuzzleIds';
+const SETTINGS_KEY = 'cursorChess.settings';
 const MAX_RECENT_PUZZLES = 150;
 const MAX_ATTEMPT_MOVES = 64;
 
@@ -156,6 +158,18 @@ export class StorageService {
   /** Puzzle ids shown recently, oldest first. */
   getRecentPuzzleIds(): string[] {
     return this.store.get<string[]>(RECENT_PUZZLES_KEY, []);
+  }
+
+  getSettings(): Settings {
+    return sanitizeSettings(this.store.get<unknown>(SETTINGS_KEY, DEFAULT_SETTINGS));
+  }
+
+  setSettings(settings: Settings): Promise<Settings> {
+    const clean = sanitizeSettings(settings);
+    return this.serialize(async () => {
+      await this.store.update(SETTINGS_KEY, clean);
+      return clean;
+    });
   }
 
   async recordPuzzleShown(puzzleId: string): Promise<void> {

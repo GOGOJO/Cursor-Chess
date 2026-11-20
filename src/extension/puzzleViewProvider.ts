@@ -67,6 +67,7 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
     switch (message.type) {
       case 'ready':
         this.refreshLibrary();
+        this.post({ type: 'settings', settings: this.storage.getSettings() });
         this.post({ type: 'progress', progress: this.storage.getSnapshot() });
         await this.showCurrentOrResume();
         break;
@@ -81,6 +82,9 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
         }
         break;
       }
+      case 'setSettings':
+        this.post({ type: 'settings', settings: await this.storage.setSettings(message.settings) });
+        break;
       case 'setFilters':
         await this.storage.setFilters(message.filters);
         this.refreshLibrary();

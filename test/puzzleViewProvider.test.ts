@@ -70,7 +70,7 @@ describe('PuzzleViewProvider', () => {
   it('sends library, progress, and the first puzzle on ready, then rates a solve once', async () => {
     const { posted, send, last } = createHarness();
     await send({ type: 'ready' });
-    expect(posted.map((m) => m.type)).toEqual(['library', 'progress', 'loadPuzzle']);
+    expect(posted.map((m) => m.type)).toEqual(['library', 'settings', 'progress', 'loadPuzzle']);
     expect(last('library').library).toMatchObject({ totalCount: SAMPLE_PUZZLES.length, importedCount: 0 });
     expect(last('progress').progress).toMatchObject({ rating: 1200, solved: 0 });
     const first = last('loadPuzzle') as Loaded;
@@ -126,6 +126,19 @@ describe('PuzzleViewProvider', () => {
     await send({ type: 'requestNextPuzzle', currentPuzzleId: '' });
     expect(storage.getActiveAttempt()).toBeNull();
     expect(last('loadPuzzle').resume).toBeUndefined();
+  });
+
+  it('saves settings and echoes a cleaned copy', async () => {
+    const { send, last, storage } = createHarness();
+    await send({ type: 'ready' });
+    expect(last('settings').settings).toMatchObject({ sound: false, boardTheme: 'sage' });
+
+    await send({
+      type: 'setSettings',
+      settings: { ...last('settings').settings, sound: true, boardTheme: 'neon' as never, autoNext: true },
+    });
+    expect(storage.getSettings()).toMatchObject({ sound: true, boardTheme: 'sage', autoNext: true });
+    expect(last('settings').settings.boardTheme).toBe('sage');
   });
 
   it('does not repeat a puzzle until the matching pool runs out', async () => {

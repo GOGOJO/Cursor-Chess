@@ -69,6 +69,7 @@ function createBrowserFallback(): VsCodeApi {
     switch (message.type) {
       case 'ready': {
         sendLibrary();
+        reply({ type: 'settings', settings: storage.getSettings() });
         reply({ type: 'progress', progress: storage.getSnapshot() });
         const saved = storage.getActiveAttempt();
         const puzzle = saved && !saved.solved && !saved.revealed ? library.get(saved.puzzleId) : undefined;
@@ -93,7 +94,10 @@ function createBrowserFallback(): VsCodeApi {
         }
         break;
       }
-      case 'setFilters':
+        case 'setSettings':
+          reply({ type: 'settings', settings: await storage.setSettings(message.settings) });
+          break;
+        case 'setFilters':
         await storage.setFilters(message.filters);
         sendLibrary();
         await sendNext();
