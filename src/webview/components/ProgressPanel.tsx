@@ -71,7 +71,7 @@ function HistoryRow({ record }: { record: AttemptRecord }) {
       {icon}
       <span className="w-9 tabular-nums text-ink-muted">{record.puzzleRating}</span>
       <span className="min-w-0 flex-1 truncate text-ink-muted">{theme ?? `#${record.puzzleId}`}</span>
-      {record.xp > 0 && <span className="tabular-nums text-gold">+{record.xp}</span>}
+      {record.xp > 0 && <span className="tabular-nums text-gold">+{record.xp} XP</span>}
       <span className={`w-8 text-right tabular-nums ${delta >= 0 ? 'text-accent' : 'text-danger'}`}>
         {delta >= 0 ? '+' : '−'}
         {Math.abs(delta)}
@@ -92,10 +92,12 @@ export function ProgressPanel({ progress, onBack }: ProgressPanelProps) {
             {progress.band} · best <span className="tabular-nums">{progress.highestRating}</span>
           </span>
         </div>
-        <button type="button" className="link-btn flex items-center gap-1 text-[11px]" onClick={onBack}>
-          <ArrowLeft size={12} />
-          Back to puzzle
-        </button>
+        <div className="text-[11px]">
+          <button type="button" className="link-btn flex items-center gap-1" onClick={onBack}>
+            <ArrowLeft size={12} />
+            Back to puzzle
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-1.5">

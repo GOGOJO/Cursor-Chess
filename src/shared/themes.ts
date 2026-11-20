@@ -52,7 +52,13 @@ const META_THEMES = new Set(['crushing', 'advantage', 'equality', 'long', 'short
 const PHASE_THEMES = new Set(['opening', 'middlegame', 'endgame']);
 
 export function themeLabel(theme: string): string {
-  return THEME_LABELS[theme] ?? theme.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+  return (
+    THEME_LABELS[theme] ??
+    theme
+      .replace(/([A-Z])/g, (c) => ` ${c.toLowerCase()}`)
+      .replace(/([a-z])(\d)/g, '$1 $2')
+      .replace(/^./, (c) => c.toUpperCase())
+  );
 }
 
 export function displayThemes(themes: string[]): string[] {

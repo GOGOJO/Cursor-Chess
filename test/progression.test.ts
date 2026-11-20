@@ -13,6 +13,7 @@ import {
 } from '../src/shared/progression';
 import { expectedScore, kFactor, nextRating, RATING_FLOOR, solveXp, STARTING_RATING } from '../src/shared/rating';
 import { SAMPLE_PUZZLES } from '../src/shared/samplePuzzles';
+import { themeLabel } from '../src/shared/themes';
 import type { Puzzle } from '../src/shared/types';
 import { parseUci, PuzzleSession } from '../src/webview/services/chessService';
 
@@ -222,6 +223,12 @@ describe('topThemes', () => {
       { theme: 'pin', attempted: 2, wins: 1 },
       { theme: 'mateIn2', attempted: 1, wins: 0 },
     ]);
+  });
+
+  it('labels unlisted Lichess themes in sentence case like the listed ones', () => {
+    expect(themeLabel('discoveredCheck')).toBe('Discovered check');
+    expect(themeLabel('mateIn6')).toBe('Mate in 6');
+    expect(themeLabel('fork')).toBe('Fork');
   });
 });
 

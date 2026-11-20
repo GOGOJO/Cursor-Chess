@@ -65,43 +65,50 @@ function createBrowserFallback(): VsCodeApi {
     sendCurrent();
   };
 
-  return {
-    async postMessage(raw) {
-      const message = raw as WebviewToExtensionMessage;
-      switch (message.type) {
-        case 'ready': {
-          sendLibrary();
-          reply({ type: 'progress', progress: storage.getSnapshot() });
-          const saved = storage.getActiveAttempt();
-          const puzzle = saved && !saved.solved && !saved.revealed ? library.get(saved.puzzleId) : undefined;
-          if (puzzle) {
-            current = { puzzle };
-            sendCurrent();
-          } else {
-            await sendNext();
-          }
-          break;
-        }
-        case 'requestNextPuzzle':
+  const handle = async (message: WebviewToExtensionMessage): Promise<void> => {
+    switch (message.type) {
+      case 'ready': {
+        sendLibrary();
+        reply({ type: 'progress', progress: storage.getSnapshot() });
+        const saved = storage.getActiveAttempt();
+        const puzzle = saved && !saved.solved && !saved.revealed ? library.get(saved.puzzleId) : undefined;
+        if (current) {
+          sendCurrent();
+        } else if (puzzle) {
+          current = { puzzle };
+          sendCurrent();
+        } else {
           await sendNext();
-          break;
-        case 'attempt': {
-          const attempt = sanitizeAttempt(message.attempt);
-          if (!attempt || !current || attempt.puzzleId !== current.puzzle.id) break;
-          if (await storage.recordAttempt(attempt, current.puzzle)) {
-            reply({ type: 'progress', progress: storage.getSnapshot() });
-          }
-          break;
         }
-        case 'setFilters':
-          await storage.setFilters(message.filters);
-          sendLibrary();
-          await sendNext();
-          break;
-        case 'importPuzzles':
-          console.info('Importing needs the extension host. Run the extension with F5 to try it.');
-          break;
+        break;
       }
+      case 'requestNextPuzzle':
+        await sendNext();
+        break;
+      case 'attempt': {
+        const attempt = sanitizeAttempt(message.attempt);
+        if (!attempt || !current || attempt.puzzleId !== current.puzzle.id) break;
+        if (await storage.recordAttempt(attempt, current.puzzle)) {
+          reply({ type: 'progress', progress: storage.getSnapshot() });
+        }
+        break;
+      }
+      case 'setFilters':
+        await storage.setFilters(message.filters);
+        sendLibrary();
+        await sendNext();
+        break;
+      case 'importPuzzles':
+        console.info('Importing needs the extension host. Run the extension with F5 to try it.');
+        break;
+    }
+  };
+
+  // Handled one at a time, so React's doubled `ready` in development can't pick two puzzles.
+  let queue: Promise<void> = Promise.resolve();
+  return {
+    postMessage(raw) {
+      queue = queue.then(() => handle(raw as WebviewToExtensionMessage)).catch((error) => console.error(error));
     },
   };
 }
