@@ -42,12 +42,36 @@ describe('StorageService', () => {
   });
 });
 
+describe('StorageService filters and history', () => {
+  it('defaults filters and rejects malformed saved values', async () => {
+    const store = new MemoryStore();
+    const storage = new StorageService(store);
+    expect(storage.getFilters()).toEqual({ difficulty: 'any', theme: 'any' });
+
+    await storage.setFilters({ difficulty: 'Expert', theme: 'fork' });
+    expect(new StorageService(store).getFilters()).toEqual({ difficulty: 'Expert', theme: 'fork' });
+
+    await store.update('cursorChess.filters', { difficulty: 'Impossible', theme: '<script>' });
+    expect(storage.getFilters()).toEqual({ difficulty: 'any', theme: 'any' });
+  });
+
+  it('keeps recently shown puzzles oldest first, without duplicates, capped', async () => {
+    const storage = new StorageService(new MemoryStore());
+    await storage.recordPuzzleShown('a');
+    await storage.recordPuzzleShown('b');
+    await storage.recordPuzzleShown('a');
+    expect(storage.getRecentPuzzleIds()).toEqual(['b', 'a']);
+    for (let i = 0; i < 200; i++) await storage.recordPuzzleShown(`p${i}`);
+    expect(storage.getRecentPuzzleIds()).toHaveLength(150);
+    expect(storage.getRecentPuzzleIds().at(-1)).toBe('p199');
+  });
+});
+
 describe('LocalPuzzleProvider', () => {
-  it('starts with the first sample and cycles', () => {
+  it('starts on the first sample and works without a cache', () => {
     const provider = new LocalPuzzleProvider();
     expect(provider.first().id).toBe(SAMPLE_PUZZLES[0]!.id);
-    const last = SAMPLE_PUZZLES[SAMPLE_PUZZLES.length - 1]!;
-    expect(provider.next(last.id).id).toBe(SAMPLE_PUZZLES[0]!.id);
-    expect(provider.next(SAMPLE_PUZZLES[0]!.id).id).toBe(SAMPLE_PUZZLES[1]!.id);
+    expect(provider.count()).toBe(SAMPLE_PUZZLES.length);
+    expect(provider.pick({ difficulty: 'any', theme: 'any' }, [])).not.toBeNull();
   });
 });

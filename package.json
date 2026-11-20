@@ -2,7 +2,7 @@
   "name": "cursor-chess",
   "displayName": "Cursor Chess",
   "description": "Solve bite-sized tactical chess puzzles in your sidebar while your agents work.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "gogojo",
   "private": true,
   "repository": {
@@ -55,6 +55,17 @@
         "title": "New Puzzle",
         "category": "Cursor Chess",
         "icon": "$(debug-step-over)"
+      },
+      {
+        "command": "cursorChess.importPuzzles",
+        "title": "Import Lichess Puzzles…",
+        "category": "Cursor Chess",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "cursorChess.clearImportedPuzzles",
+        "title": "Remove Imported Puzzles…",
+        "category": "Cursor Chess"
       }
     ],
     "menus": {
@@ -63,6 +74,16 @@
           "command": "cursorChess.newPuzzle",
           "when": "view == cursorChess.puzzleView",
           "group": "navigation"
+        },
+        {
+          "command": "cursorChess.importPuzzles",
+          "when": "view == cursorChess.puzzleView",
+          "group": "1_library@1"
+        },
+        {
+          "command": "cursorChess.clearImportedPuzzles",
+          "when": "view == cursorChess.puzzleView",
+          "group": "1_library@2"
         }
       ]
     }

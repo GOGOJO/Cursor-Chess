@@ -1,6 +1,6 @@
 import type { PieceSymbol, Square } from 'chess.js';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import type { PlayerSummary, Puzzle } from '../../shared/types';
+import type { LibraryInfo, PlayerSummary, Puzzle, PuzzleFilters } from '../../shared/types';
 import { PuzzleSession } from '../services/chessService';
 import { areSoundsEnabled, playSound, setSoundsEnabled, type SoundCue } from '../services/soundService';
 import { onExtensionMessage, postToExtension } from '../vscode';
@@ -46,6 +46,8 @@ export function usePuzzle() {
   const [hintLevel, setHintLevel] = useState<0 | 1 | 2>(0);
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
   const [summary, setSummary] = useState<PlayerSummary | null>(null);
+  const [library, setLibrary] = useState<LibraryInfo | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(areSoundsEnabled);
 
   const clearTimers = () => {
@@ -79,8 +81,14 @@ export function usePuzzle() {
 
   useEffect(() => {
     const unsubscribe = onExtensionMessage((message) => {
-      if (message.type === 'loadPuzzle') loadPuzzle(message.puzzle);
-      else if (message.type === 'summary') setSummary(message.summary);
+      if (message.type === 'loadPuzzle') {
+        loadPuzzle(message.puzzle);
+        setNotice(message.notice ?? null);
+      } else if (message.type === 'summary') {
+        setSummary(message.summary);
+      } else if (message.type === 'library') {
+        setLibrary(message.library);
+      }
     });
     postToExtension({ type: 'ready' });
     return () => {
@@ -225,6 +233,14 @@ export function usePuzzle() {
     setSoundOn(setSoundsEnabled(!areSoundsEnabled()));
   }, []);
 
+  const setFilters = useCallback((filters: PuzzleFilters) => {
+    clearTimers();
+    setLibrary((current) => (current ? { ...current, filters } : current));
+    postToExtension({ type: 'setFilters', filters });
+  }, []);
+
+  const importPuzzles = useCallback(() => postToExtension({ type: 'importPuzzles' }), []);
+
   return {
     session: sessionRef.current,
     selected,
@@ -233,6 +249,8 @@ export function usePuzzle() {
     hintLevel,
     pendingPromotion,
     summary,
+    library,
+    notice,
     soundOn,
     tryMove,
     onSquareClick,
@@ -245,5 +263,7 @@ export function usePuzzle() {
     revealSolution,
     nextPuzzle,
     toggleSound,
+    setFilters,
+    importPuzzles,
   };
 }

@@ -1,22 +1,22 @@
 import * as vscode from 'vscode';
 import type { ExtensionToWebviewMessage, WebviewToExtensionMessage } from '../shared/messages';
-import type { Puzzle } from '../shared/types';
-import { LocalPuzzleProvider } from './providers/localPuzzleProvider';
-import { StorageService } from './storage/storageService';
+import { chooseNextPuzzle } from '../shared/puzzleLibrary';
+import type { LibraryInfo, Puzzle } from '../shared/types';
+import type { LocalPuzzleProvider } from './providers/localPuzzleProvider';
+import type { StorageService } from './storage/storageService';
 
 export class PuzzleViewProvider implements vscode.WebviewViewProvider {
   static readonly viewId = 'cursorChess.puzzleView';
 
   private view?: vscode.WebviewView;
-  private currentPuzzle: Puzzle;
+  private current?: { puzzle: Puzzle; notice?: string };
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly puzzles: LocalPuzzleProvider,
     private readonly storage: StorageService,
-  ) {
-    this.currentPuzzle = puzzles.first();
-  }
+    private readonly onImportRequested: () => void = () => {},
+  ) {}
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
@@ -32,19 +32,27 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  showNextPuzzle(): void {
-    this.currentPuzzle = this.puzzles.next(this.currentPuzzle.id);
-    this.post({ type: 'loadPuzzle', puzzle: this.currentPuzzle });
+  async showNextPuzzle(): Promise<void> {
+    this.current = chooseNextPuzzle(this.puzzles, this.storage.getFilters(), this.storage.getRecentPuzzleIds());
+    await this.storage.recordPuzzleShown(this.current.puzzle.id);
+    this.postCurrent();
+  }
+
+  /** Re-sends library counts, for example after an import. */
+  refreshLibrary(): void {
+    this.post({ type: 'library', library: this.libraryInfo() });
   }
 
   private async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     switch (message.type) {
       case 'ready':
-        this.post({ type: 'loadPuzzle', puzzle: this.currentPuzzle });
+        this.refreshLibrary();
         this.post({ type: 'summary', summary: this.storage.getSummary() });
+        if (this.current && this.puzzles.has(this.current.puzzle.id)) this.postCurrent();
+        else await this.showNextPuzzle();
         break;
       case 'requestNextPuzzle':
-        this.showNextPuzzle();
+        await this.showNextPuzzle();
         break;
       case 'puzzleSolved':
         if (await this.storage.recordSolve(message.attemptId)) {
@@ -54,7 +62,30 @@ export class PuzzleViewProvider implements vscode.WebviewViewProvider {
       case 'puzzleFailed':
         await this.storage.recordFailure(message.attemptId);
         break;
+      case 'setFilters':
+        await this.storage.setFilters(message.filters);
+        this.refreshLibrary();
+        await this.showNextPuzzle();
+        break;
+      case 'importPuzzles':
+        this.onImportRequested();
+        break;
     }
+  }
+
+  private libraryInfo(): LibraryInfo {
+    const filters = this.storage.getFilters();
+    return {
+      filters,
+      totalCount: this.puzzles.count(),
+      importedCount: this.puzzles.importedCount,
+      matchingCount: this.puzzles.count(filters),
+    };
+  }
+
+  private postCurrent(): void {
+    if (!this.current) return;
+    this.post({ type: 'loadPuzzle', puzzle: this.current.puzzle, notice: this.current.notice });
   }
 
   private post(message: ExtensionToWebviewMessage): void {

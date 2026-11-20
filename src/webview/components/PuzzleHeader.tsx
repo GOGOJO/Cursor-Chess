@@ -1,7 +1,7 @@
 import { Trophy, Volume2, VolumeX } from 'lucide-react';
 import type { PlayerSummary, Puzzle } from '../../shared/types';
+import { displayThemes } from '../../shared/themes';
 import { difficultyBand } from '../services/ratingService';
-import { displayThemes } from '../services/themes';
 import { PixelKnight } from './PixelKnight';
 
 interface PuzzleHeaderProps {

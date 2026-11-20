@@ -16,7 +16,6 @@ const THEME_LABELS: Record<string, string> = {
   attraction: 'Attraction',
   promotion: 'Promotion',
   underPromotion: 'Underpromotion',
-  stalemate: 'Stalemate',
   smotheredMate: 'Smothered mate',
   exposedKing: 'Exposed king',
   xRayAttack: 'X-ray',
@@ -34,14 +33,30 @@ const THEME_LABELS: Record<string, string> = {
   opening: 'Opening',
 };
 
+/** The tactics offered in the theme filter, in display order. */
+export const FILTER_THEMES: readonly string[] = [
+  'fork',
+  'pin',
+  'skewer',
+  'discoveredAttack',
+  'doubleCheck',
+  'deflection',
+  'backRankMate',
+  'hangingPiece',
+  'mateIn1',
+  'mateIn2',
+];
+
 /** Lichess tags that describe puzzle length or evaluation rather than the tactic. */
 const META_THEMES = new Set(['crushing', 'advantage', 'equality', 'long', 'short', 'veryLong', 'oneMove', 'master', 'masterVsMaster', 'superGM']);
 const PHASE_THEMES = new Set(['opening', 'middlegame', 'endgame']);
 
+export function themeLabel(theme: string): string {
+  return THEME_LABELS[theme] ?? theme.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+}
+
 export function displayThemes(themes: string[]): string[] {
   const tactical = themes.filter((t) => !META_THEMES.has(t) && !PHASE_THEMES.has(t));
   const phase = themes.filter((t) => PHASE_THEMES.has(t));
-  return [...tactical, ...phase]
-    .slice(0, 3)
-    .map((t) => THEME_LABELS[t] ?? t.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()));
+  return [...tactical, ...phase].slice(0, 3).map(themeLabel);
 }

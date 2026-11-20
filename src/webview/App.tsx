@@ -1,13 +1,17 @@
+import { Info } from 'lucide-react';
 import { ChessBoard } from './components/ChessBoard';
 import { PixelKnight } from './components/PixelKnight';
 import { PuzzleControls } from './components/PuzzleControls';
 import { PuzzleFeedback } from './components/PuzzleFeedback';
+import { PuzzleFilters } from './components/PuzzleFilters';
 import { PuzzleHeader } from './components/PuzzleHeader';
 import { usePuzzle } from './hooks/usePuzzle';
 
+const fmt = (n: number) => n.toLocaleString('en-US');
+
 export function App() {
   const puzzle = usePuzzle();
-  const { session } = puzzle;
+  const { session, library } = puzzle;
 
   if (!session) {
     return (
@@ -17,9 +21,18 @@ export function App() {
     );
   }
 
+  const filtered = library && (library.filters.difficulty !== 'any' || library.filters.theme !== 'any');
+
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col gap-3 px-3 pt-3 pb-4">
       <PuzzleHeader puzzle={session.puzzle} summary={puzzle.summary} soundOn={puzzle.soundOn} onToggleSound={puzzle.toggleSound} />
+      {library && <PuzzleFilters filters={library.filters} onChange={puzzle.setFilters} />}
+      {puzzle.notice && (
+        <p className="flex items-start gap-1.5 text-[11px] leading-snug text-gold" role="status">
+          <Info size={12} className="mt-px shrink-0" />
+          <span>{puzzle.notice}</span>
+        </p>
+      )}
       <ChessBoard
         session={session}
         selected={puzzle.selected}
@@ -46,12 +59,23 @@ export function App() {
         onReset={puzzle.reset}
         onNext={puzzle.nextPuzzle}
       />
-      <footer className="pt-1 text-center text-[10px] text-ink-faint">
-        Puzzles from the{' '}
-        <a href="https://database.lichess.org/#puzzles" className="underline decoration-dotted underline-offset-2 hover:text-ink-muted">
-          Lichess database
-        </a>{' '}
-        (CC0)
+      <footer className="flex flex-col items-center gap-0.5 pt-1 text-center text-[10px] text-ink-faint">
+        {library && (
+          <span>
+            {filtered ? `${fmt(library.matchingCount)} of ${fmt(library.totalCount)} puzzles match` : `${fmt(library.totalCount)} puzzles`}
+            {' · '}
+            <button type="button" className="link-btn" onClick={puzzle.importPuzzles}>
+              Import more
+            </button>
+          </span>
+        )}
+        <span>
+          From the{' '}
+          <a href="https://database.lichess.org/#puzzles" className="underline decoration-dotted underline-offset-2 hover:text-ink-muted">
+            Lichess puzzle database
+          </a>{' '}
+          (CC0)
+        </span>
       </footer>
     </main>
   );
