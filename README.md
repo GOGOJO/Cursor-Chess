@@ -31,7 +31,11 @@ The sidebar follows your agent. You get:
 - A short glow around the board on a solve. Animations turn off when the system asks for reduced motion.
 - Controls keep a name for screen readers when the sidebar is too narrow for labels, and the layout holds together down to about 280px wide.
 
-The only network access is an import you start yourself.
+The only network access is an import you start yourself. The extension code is MIT. The bundled puzzles are from the Lichess database, which is CC0.
+
+## Install from Cursor
+
+Search for **Cursor Chess** in the Extensions view once `gogojo.cursor-chess` is on [Open VSX](https://open-vsx.org). Cursor reads that registry, not the VS Code Marketplace.
 
 ## Install the VSIX
 
@@ -41,6 +45,14 @@ npm run package          # typecheck + tests + build + cursor-chess-<version>.vs
 ```
 
 Then in Cursor, open the Command Palette and run **Extensions: Install from VSIX…**, and pick the `.vsix` file. You can also run `cursor --install-extension cursor-chess-0.7.0.vsix`. Click the knight icon in the activity bar to open it.
+
+To publish that package to the `gogojo` namespace on Open VSX, from this folder:
+
+```bash
+npx ovsx publish -p "$OVSX_PAT"
+```
+
+`OVSX_PAT` is an access token from the Open VSX settings page. The namespace has to exist first.
 
 ## Develop
 
