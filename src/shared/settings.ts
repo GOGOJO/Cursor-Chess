@@ -13,6 +13,8 @@ export interface Settings {
   autoNext: boolean;
   /** Quiet notice when an agent finishes. It waits while a puzzle is on screen. */
   notifyOnAgent: boolean;
+  /** Open the puzzle sidebar while an agent works, then close it when the agent stops. */
+  openWithAgent: boolean;
   boardTheme: BoardThemeId;
   pieceStyle: PieceStyleId;
 }
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   coordinates: true,
   autoNext: false,
   notifyOnAgent: true,
+  openWithAgent: true,
   boardTheme: 'sage',
   pieceStyle: 'standard',
 };
@@ -98,6 +101,7 @@ export function sanitizeSettings(value: unknown): Settings {
     coordinates: bool('coordinates', DEFAULT_SETTINGS.coordinates),
     autoNext: bool('autoNext', DEFAULT_SETTINGS.autoNext),
     notifyOnAgent: bool('notifyOnAgent', DEFAULT_SETTINGS.notifyOnAgent),
+    openWithAgent: bool('openWithAgent', DEFAULT_SETTINGS.openWithAgent),
     boardTheme: isTheme(raw.boardTheme) ? raw.boardTheme : DEFAULT_SETTINGS.boardTheme,
     pieceStyle: isPieceStyle(raw.pieceStyle) ? raw.pieceStyle : DEFAULT_SETTINGS.pieceStyle,
   };
