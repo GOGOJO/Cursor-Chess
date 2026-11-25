@@ -62,14 +62,6 @@ npm run package          # typecheck + tests + build + cursor-chess-<version>.vs
 
 In Cursor, run **Extensions: Install from VSIX…** and pick the `.vsix` file, or run `cursor --install-extension cursor-chess-<version>.vsix`.
 
-To publish a new version to the `gogojo` namespace on Open VSX:
-
-```bash
-npx ovsx publish -p "$OVSX_PAT"
-```
-
-`OVSX_PAT` is an access token from the [Open VSX tokens page](https://open-vsx.org/user-settings/tokens).
-
 ## Develop
 
 | Command | What it does |
