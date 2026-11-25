@@ -2,7 +2,7 @@
   "name": "cursor-chess",
   "displayName": "Cursor Chess",
   "description": "Solve bite-sized tactical chess puzzles in your sidebar while your agents work.",
-  "version": "0.7.0",
+  "version": "0.7.2",
   "publisher": "gogojo",
   "license": "MIT",
   "icon": "media/icon.png",
